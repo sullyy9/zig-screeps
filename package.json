@@ -1,0 +1,6 @@
+{
+  "devDependencies": {
+    "grunt": "^1.6.1",
+    "grunt-screeps": "^1.5.0"
+  }
+}
