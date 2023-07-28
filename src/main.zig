@@ -1,10 +1,18 @@
 const std = @import("std");
 const testing = std.testing;
 
-export fn add(a: i32, b: i32) i32 {
-    return a + b;
+extern "logging" fn log(str: [*]const u8, len: u32) void;
+
+//////////////////////////////////////////////////
+
+fn print(str: []const u8) void {
+    log(str.ptr, str.len);
 }
 
-test "basic add functionality" {
-    try testing.expect(add(3, 7) == 10);
+//////////////////////////////////////////////////
+
+export fn run() void {
+    const allocator = std.heap.page_allocator;
+    const string = std.fmt.allocPrint(allocator, "test format {d}", .{1234}) catch return;
+    print(string);
 }

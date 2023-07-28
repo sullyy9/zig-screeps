@@ -1,4 +1,4 @@
-module.exports = function(grunt) {
+module.exports = function (grunt) {
 
     grunt.loadNpmTasks('grunt-screeps');
 
@@ -11,7 +11,7 @@ module.exports = function(grunt) {
                 //server: 'season'
             },
             dist: {
-                src: ['./src/main.js', './zig-out/lib/zig-screeps.wasm']
+                src: ['./src/main.js', './src/logging.js', './zig-out/lib/zig-screeps.wasm']
             }
         }
     });

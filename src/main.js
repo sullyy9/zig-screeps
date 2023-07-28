@@ -1,19 +1,36 @@
-// This will return an ArrayBuffer with `addTwo.wasm` binary contents
+var logging = require('logging')
+var logger = new logging.Logger();
+
+
+// Load the WASM module.
 const bytecode = require('zig-screeps');
+const wasm_module = new WebAssembly.Module(bytecode);
 
-const wasmModule = new WebAssembly.Module(bytecode);
+// Define imports into WASM module.
+const imports = {
+    env: {
+        memoryBase: 0,
+        tableBase: 0,
+        memory: new WebAssembly.Memory({ initial: 256 }),
+        table: new WebAssembly.Table({ initial: 0, element: 'anyfunc' }),
+    },
+    logging: {
+        log: function (str, len) { logger.log(str, len) },
+    },
+    screeps: {
 
-const imports = {};
+    },
 
-// Some predefined environment for Emscripten. See here:
-// https://github.com/WebAssembly/tool-conventions/blob/master/DynamicLinking.md
-imports.env = {
-    memoryBase: 0,
-    tableBase: 0,
-    memory: new WebAssembly.Memory({ initial: 256 }),
-    table: new WebAssembly.Table({ initial: 0, element: 'anyfunc' })
 };
 
-const wasmInstance = new WebAssembly.Instance(wasmModule, imports);
+// Create WASM module instance.
+const instance = new WebAssembly.Instance(wasm_module, imports);
+const exports = instance.exports
 
-console.log(wasmInstance.exports.add(2, 3));
+// Initialise logger.
+logger.set_memory(exports.memory)
+
+// Main loop.
+module.exports.loop = function () {
+    instance.exports.run();
+}

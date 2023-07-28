@@ -12,11 +12,34 @@
             ],
         },
         {
+            "label": "Clean",
+            "type": "shell",
+            "command": "rm",
+            "args": [
+                "-rf",
+                "${workspaceFolder}/zig-cache",
+                "&&",
+                "rm",
+                "-rf",
+                "${workspaceFolder}/zig-build"
+            
+            ],
+        },
+        {
             "label": "Commit",
             "type": "shell",
             "command": "grunt",
             "args": [
                 "screeps"
+            ],
+            "dependsOn": "Build Release"
+        },
+        {
+            "label": "Setup",
+            "type": "shell",
+            "command": "npm",
+            "args": [
+                "install"
             ],
         },
     ]
