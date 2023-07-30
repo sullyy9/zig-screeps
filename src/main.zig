@@ -1,18 +1,30 @@
 const std = @import("std");
-const testing = std.testing;
+const js = @import("sysjs");
 
-extern "logging" fn log(str: [*]const u8, len: u32) void;
+const allocator = std.heap.page_allocator;
+
+extern "sysjs" fn wzLogWrite(str: [*]const u8, len: u32) void;
+extern "sysjs" fn wzPanic(str: [*]const u8, len: u32) void;
+extern "sysjs" fn wzLogFlush() void;
 
 //////////////////////////////////////////////////
 
 fn print(str: []const u8) void {
-    log(str.ptr, str.len);
+    wzLogWrite(str.ptr, str.len);
+    wzLogFlush();
 }
 
 //////////////////////////////////////////////////
 
-export fn run() void {
-    const allocator = std.heap.page_allocator;
-    const string = std.fmt.allocPrint(allocator, "test format {d}", .{1234}) catch return;
-    print(string);
+export fn run(game_ref: u32) void {
+    const game = js.Object{ .ref = game_ref };
+
+    const spawns = game.get("spawns").view(.object);
+    const spawn1: js.Object = spawns.get("Spawn1").view(.object);
+
+    const parts: js.Object = js.createArray();
+    parts.setIndex(0, js.createString("work").toValue());
+    parts.setIndex(1, js.createString("carry").toValue());
+    parts.setIndex(2, js.createString("move").toValue());
+    _ = spawn1.call("spawnCreep", &.{ parts.toValue(), js.createString("harvester1").toValue() });
 }

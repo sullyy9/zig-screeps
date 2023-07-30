@@ -11,7 +11,7 @@ module.exports = function (grunt) {
                 //server: 'season'
             },
             dist: {
-                src: ['./src/main.js', './src/logging.js', './zig-out/lib/zig-screeps.wasm']
+                src: ['./src/main.js', './lib/mach-sysjs/src/mach-sysjs.js', './zig-out/lib/zig-screeps.wasm']
             }
         }
     });

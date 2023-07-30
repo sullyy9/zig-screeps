@@ -1,15 +1,20 @@
 const std = @import("std");
 
-pub fn build(b: *std.build.Builder) void {
-    const lib = b.addSharedLibrary("zig-screeps", "src/main.zig", b.version(0,0,0));
+const sysjs = @import("lib/mach-sysjs/build.zig");
 
-    lib.setTarget(.{.cpu_arch = .wasm32, .os_tag = .freestanding});
-    
+pub fn build(b: *std.build.Builder) void {
+    const lib = b.addSharedLibrary("zig-screeps", "src/main.zig", b.version(0, 0, 0));
+    lib.rdynamic = true;
+
+    lib.addPackage(sysjs.pkg);
+
+    lib.setTarget(.{ .cpu_arch = .wasm32, .os_tag = .freestanding });
+
     // Standard release options allow the person running `zig build` to select
     // between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall.
     const mode = b.standardReleaseOptions();
     lib.setBuildMode(mode);
-    
+
     lib.install();
 
     const main_tests = b.addTest("src/main.zig");

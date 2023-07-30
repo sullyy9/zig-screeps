@@ -1,6 +1,4 @@
-var logging = require('logging')
-var logger = new logging.Logger();
-
+const sysjs = require('mach-sysjs').sysjs;
 
 // Load the WASM module.
 const bytecode = require('zig-screeps');
@@ -14,23 +12,18 @@ const imports = {
         memory: new WebAssembly.Memory({ initial: 256 }),
         table: new WebAssembly.Table({ initial: 0, element: 'anyfunc' }),
     },
-    logging: {
-        log: function (str, len) { logger.log(str, len) },
-    },
-    screeps: {
-
-    },
-
+    sysjs: { ...sysjs },
 };
 
 // Create WASM module instance.
 const instance = new WebAssembly.Instance(wasm_module, imports);
-const exports = instance.exports
 
-// Initialise logger.
-logger.set_memory(exports.memory)
+// Initialise bindings. The global object won't exist so add any required global objects manually
+// and pass their references into the main function.
+sysjs.init(instance);
+let game_ref = sysjs.addValue(Game);
 
 // Main loop.
 module.exports.loop = function () {
-    instance.exports.run();
+    instance.exports.run(game_ref);
 }
