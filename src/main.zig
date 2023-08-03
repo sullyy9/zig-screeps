@@ -3,7 +3,7 @@ const fmt = std.fmt;
 const logging = std.log.scoped(.main);
 const allocator = std.heap.page_allocator;
 
-const js = @import("sysjs");
+const js = @import("js_bind.zig");
 
 extern "sysjs" fn wzLogWrite(str: [*]const u8, len: u32) void;
 extern "sysjs" fn wzLogFlush() void;
@@ -30,10 +30,6 @@ pub fn log(
 
 //////////////////////////////////////////////////
 
-const BindingError = error{
-    UnexpectedType,
-};
-
 const ScreepsErrorVal = enum(i32) {
     ok = 0,
     not_owner = -1,
@@ -50,25 +46,26 @@ const ScreepsErrorVal = enum(i32) {
     no_bodypart = -12,
     rcl_not_enough = -14,
     gcl_not_enough = -15,
+    _,
 
-    fn to_error(self: ScreepsErrorVal) ?ScreepsError {
-        switch (self) {
-            ScreepsErrorVal.ok => return null,
-            ScreepsErrorVal.not_owner => return ScreepsError.NotOwner,
-            ScreepsErrorVal.no_path => return ScreepsError.NoPath,
-            ScreepsErrorVal.name_exists => return ScreepsError.NameExists,
-            ScreepsErrorVal.busy => return ScreepsError.Busy,
-            ScreepsErrorVal.not_found => return ScreepsError.NotFound,
-            ScreepsErrorVal.not_enough_resources => return ScreepsError.NotEnoughResources,
-            ScreepsErrorVal.invalid_target => return ScreepsError.InvalidTarget,
-            ScreepsErrorVal.full => return ScreepsError.Full,
-            ScreepsErrorVal.not_in_range => return ScreepsError.NotInRange,
-            ScreepsErrorVal.invalid_args => return ScreepsError.InvalidArgs,
-            ScreepsErrorVal.tired => return ScreepsError.Tired,
-            ScreepsErrorVal.no_bodypart => return ScreepsError.NoBodypart,
-            ScreepsErrorVal.rcl_not_enough => return ScreepsError.RclNotEnough,
-            ScreepsErrorVal.gcl_not_enough => return ScreepsError.GclNotEnough,
-        }
+    fn toError(self: ScreepsErrorVal) ?ScreepsError {
+        return switch (self) {
+            ScreepsErrorVal.not_owner => ScreepsError.NotOwner,
+            ScreepsErrorVal.no_path => ScreepsError.NoPath,
+            ScreepsErrorVal.name_exists => ScreepsError.NameExists,
+            ScreepsErrorVal.busy => ScreepsError.Busy,
+            ScreepsErrorVal.not_found => ScreepsError.NotFound,
+            ScreepsErrorVal.not_enough_resources => ScreepsError.NotEnoughResources,
+            ScreepsErrorVal.invalid_target => ScreepsError.InvalidTarget,
+            ScreepsErrorVal.full => ScreepsError.Full,
+            ScreepsErrorVal.not_in_range => ScreepsError.NotInRange,
+            ScreepsErrorVal.invalid_args => ScreepsError.InvalidArgs,
+            ScreepsErrorVal.tired => ScreepsError.Tired,
+            ScreepsErrorVal.no_bodypart => ScreepsError.NoBodypart,
+            ScreepsErrorVal.rcl_not_enough => ScreepsError.RclNotEnough,
+            ScreepsErrorVal.gcl_not_enough => ScreepsError.GclNotEnough,
+            else => null,
+        };
     }
 };
 
@@ -114,74 +111,37 @@ const Spawn = struct {
     /// Load a Spawn from the game world.
     ///
     fn fromGame(game: *const js.Object, name: []const u8) !Spawn {
-        // Grab the list of spawns
-        const spawns: js.Object = blk: {
-            const spawns: js.Value = game.get("spawns");
+        const spawns = try game.get("spawns", js.Object);
 
-            if (!spawns.is(.object)) {
-                return BindingError.UnexpectedType;
-            }
-
-            break :blk spawns.view(.object);
-        };
-
-        // Determine if a spawn with the given name exists.
-        const has_spawn: bool = blk: {
-            const has_spawn = spawns.call("hasOwnProperty", &.{js.createString(name).toValue()});
-
-            if (!has_spawn.is(.bool)) {
-                return BindingError.UnexpectedType;
-            }
-
-            break :blk has_spawn.view(.bool);
-        };
-
+        const has_spawn = try spawns.call("hasOwnProperty", &.{js.String.from(name)}, bool);
         if (!has_spawn) {
             return ScreepsError.NotFound;
         }
 
-        // Grab the desired spawn object.
-        const spawn: js.Object = blk: {
-            const spawn = spawns.get(name);
-
-            if (!spawn.is(.object)) {
-                return BindingError.UnexpectedType;
-            }
-
-            break :blk spawn.view(.object);
-        };
-
         return Spawn{
             .name = name,
-            .obj = spawn,
+            .obj = try spawns.get(name, js.Object),
         };
     }
 
     /// Spawn a new creep.
     ///
     fn spawnCreep(self: *const Spawn, blueprint: *const Creep) !void {
-        const parts: js.Object = js.createArray();
+        const parts: js.Array = js.Array.new();
 
         for (blueprint.parts) |part, i| {
-            parts.setIndex(i, js.createString(@tagName(part)).toValue());
+            parts.set(i, js.String.from(@tagName(part)));
         }
 
-        const result = self.obj.call("spawnCreep", &.{ parts.toValue(), js.createString(blueprint.name).toValue() });
-
-        if (!result.is(js.Value.Tag.num)) {
-            return BindingError.UnexpectedType;
-        }
-
-        const error_val = @floatToInt(i32, result.view(.num));
-        const error_code: ScreepsErrorVal = @intToEnum(ScreepsErrorVal, error_val);
-        if (error_code.to_error()) |err| {
+        const result = try self.obj.call("spawnCreep", &.{ parts, js.String.from(blueprint.name) }, ScreepsErrorVal);
+        if (result.toError()) |err| {
             return err;
         }
     }
 };
 
 export fn run(game_ref: u32) void {
-    const game = js.Object{ .ref = game_ref };
+    const game = js.Object.fromRef(game_ref);
 
     if (Spawn.fromGame(&game, "Spawn1")) |spawn| {
         const creep = Creep{ .name = "Harvester", .parts = &[_]Creep.Part{ .work, .carry, .move } };

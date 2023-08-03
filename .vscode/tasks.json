@@ -8,6 +8,15 @@
             "type": "shell",
             "command": "zig",
             "args": [
+                "build",
+                "-Drelease-small=true"
+            ],
+        },
+        {
+            "label": "Build Debug",
+            "type": "shell",
+            "command": "zig",
+            "args": [
                 "build"
             ],
         },
