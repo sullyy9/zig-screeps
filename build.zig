@@ -3,7 +3,7 @@ const std = @import("std");
 const sysjs = @import("lib/mach-sysjs/build.zig");
 
 pub fn build(b: *std.build.Builder) void {
-    const lib = b.addSharedLibrary("zig-screeps", "src/main.zig", b.version(0, 0, 0));
+    const lib = b.addSharedLibrary("zig-screeps", "src/main.zig", .unversioned);
     lib.rdynamic = true;
 
     lib.addPackage(sysjs.pkg);
