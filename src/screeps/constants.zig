@@ -1,0 +1,55 @@
+pub const ErrorVal = enum(i32) {
+    ok = 0,
+    not_owner = -1,
+    no_path = -2,
+    name_exists = -3,
+    busy = -4,
+    not_found = -5,
+    not_enough_resources = -6,
+    invalid_target = -7,
+    full = -8,
+    not_in_range = -9,
+    invalid_args = -10,
+    tired = -11,
+    no_bodypart = -12,
+    rcl_not_enough = -14,
+    gcl_not_enough = -15,
+    _,
+
+    pub fn toError(self: ErrorVal) ?ScreepsError {
+        return switch (self) {
+            ErrorVal.not_owner => ScreepsError.NotOwner,
+            ErrorVal.no_path => ScreepsError.NoPath,
+            ErrorVal.name_exists => ScreepsError.NameExists,
+            ErrorVal.busy => ScreepsError.Busy,
+            ErrorVal.not_found => ScreepsError.NotFound,
+            ErrorVal.not_enough_resources => ScreepsError.NotEnoughResources,
+            ErrorVal.invalid_target => ScreepsError.InvalidTarget,
+            ErrorVal.full => ScreepsError.Full,
+            ErrorVal.not_in_range => ScreepsError.NotInRange,
+            ErrorVal.invalid_args => ScreepsError.InvalidArgs,
+            ErrorVal.tired => ScreepsError.Tired,
+            ErrorVal.no_bodypart => ScreepsError.NoBodypart,
+            ErrorVal.rcl_not_enough => ScreepsError.RclNotEnough,
+            ErrorVal.gcl_not_enough => ScreepsError.GclNotEnough,
+            else => null,
+        };
+    }
+};
+
+pub const ScreepsError = error{
+    NotOwner,
+    NoPath,
+    NameExists,
+    Busy,
+    NotFound,
+    NotEnoughResources,
+    InvalidTarget,
+    Full,
+    NotInRange,
+    InvalidArgs,
+    Tired,
+    NoBodypart,
+    RclNotEnough,
+    GclNotEnough,
+};
