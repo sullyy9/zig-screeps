@@ -35,13 +35,22 @@
             ],
         },
         {
-            "label": "Commit",
+            "label": "Commit Release",
             "type": "shell",
             "command": "grunt",
             "args": [
                 "screeps"
             ],
             "dependsOn": "Build Release"
+        },
+        {
+            "label": "Commit Debug",
+            "type": "shell",
+            "command": "grunt",
+            "args": [
+                "screeps"
+            ],
+            "dependsOn": "Build Debug"
         },
         {
             "label": "Setup",
