@@ -1,0 +1,237 @@
+{
+    "creeps": {
+        "Harvester": {
+            "room": {
+                "name": "sim",
+                "energyAvailable": 300,
+                "energyCapacityAvailable": 300,
+                "survivalInfo": {
+                    "mode": "survival",
+                    "status": "active",
+                    "user": "64c10985bd0248c0e0db520e",
+                    "score": 0,
+                    "timeToWave": 200,
+                    "wave": 1,
+                    "survivalEnabled": true,
+                    "invaders": {
+                        "bodies": []
+                    }
+                },
+                "visual": {
+                    "roomName": "sim"
+                }
+            },
+            "pos": {
+                "x": 24,
+                "y": 21,
+                "roomName": "sim"
+            },
+            "id": "7c9abdc1d8bbe648f8617830",
+            "name": "Harvester",
+            "body": [
+                {
+                    "type": "work",
+                    "hits": 100
+                },
+                {
+                    "type": "carry",
+                    "hits": 100
+                },
+                {
+                    "type": "move",
+                    "hits": 100
+                }
+            ],
+            "my": true,
+            "owner": {
+                "username": "Ryan_"
+            },
+            "spawning": false,
+            "ticksToLive": 587,
+            "carryCapacity": 50,
+            "carry": {},
+            "store": {},
+            "fatigue": 0,
+            "hits": 300,
+            "hitsMax": 300
+        }
+    },
+    "powerCreeps": {},
+    "spawns": {
+        "Spawn1": {
+            "id": "b4e3c901f225952b8a68966f",
+            "room": {
+                "name": "sim",
+                "energyAvailable": 300,
+                "energyCapacityAvailable": 300,
+                "survivalInfo": {
+                    "mode": "survival",
+                    "status": "active",
+                    "user": "64c10985bd0248c0e0db520e",
+                    "score": 0,
+                    "timeToWave": 200,
+                    "wave": 1,
+                    "survivalEnabled": true,
+                    "invaders": {
+                        "bodies": []
+                    }
+                },
+                "visual": {
+                    "roomName": "sim"
+                }
+            },
+            "pos": {
+                "x": 24,
+                "y": 22,
+                "roomName": "sim"
+            },
+            "name": "Spawn1",
+            "energy": 300,
+            "energyCapacity": 300,
+            "spawning": null,
+            "store": {
+                "energy": 300
+            },
+            "owner": {
+                "username": "Ryan_"
+            },
+            "my": true,
+            "hits": 5000,
+            "hitsMax": 5000,
+            "structureType": "spawn"
+        }
+    },
+    "structures": {
+        "6e68a68ce518cbc5dbcc9f6c": {
+            "id": "6e68a68ce518cbc5dbcc9f6c",
+            "room": {
+                "name": "sim",
+                "energyAvailable": 300,
+                "energyCapacityAvailable": 300,
+                "survivalInfo": {
+                    "mode": "survival",
+                    "status": "active",
+                    "user": "64c10985bd0248c0e0db520e",
+                    "score": 0,
+                    "timeToWave": 200,
+                    "wave": 1,
+                    "survivalEnabled": true,
+                    "invaders": {
+                        "bodies": []
+                    }
+                },
+                "visual": {
+                    "roomName": "sim"
+                }
+            },
+            "pos": {
+                "x": 22,
+                "y": 15,
+                "roomName": "sim"
+            },
+            "ticksToDowngrade": 3617,
+            "level": 1,
+            "progress": 0,
+            "progressTotal": 200,
+            "safeModeAvailable": 0,
+            "isPowerEnabled": false,
+            "owner": {
+                "username": "Ryan_"
+            },
+            "my": true,
+            "structureType": "controller"
+        },
+        "b4e3c901f225952b8a68966f": {
+            "id": "b4e3c901f225952b8a68966f",
+            "room": {
+                "name": "sim",
+                "energyAvailable": 300,
+                "energyCapacityAvailable": 300,
+                "survivalInfo": {
+                    "mode": "survival",
+                    "status": "active",
+                    "user": "64c10985bd0248c0e0db520e",
+                    "score": 0,
+                    "timeToWave": 200,
+                    "wave": 1,
+                    "survivalEnabled": true,
+                    "invaders": {
+                        "bodies": []
+                    }
+                },
+                "visual": {
+                    "roomName": "sim"
+                }
+            },
+            "pos": {
+                "x": 24,
+                "y": 22,
+                "roomName": "sim"
+            },
+            "name": "Spawn1",
+            "energy": 300,
+            "energyCapacity": 300,
+            "spawning": null,
+            "store": {
+                "energy": 300
+            },
+            "owner": {
+                "username": "Ryan_"
+            },
+            "my": true,
+            "hits": 5000,
+            "hitsMax": 5000,
+            "structureType": "spawn"
+        }
+    },
+    "flags": {},
+    "constructionSites": {},
+    "rooms": {
+        "sim": {
+            "name": "sim",
+            "energyAvailable": 300,
+            "energyCapacityAvailable": 300,
+            "survivalInfo": {
+                "mode": "survival",
+                "status": "active",
+                "user": "64c10985bd0248c0e0db520e",
+                "score": 0,
+                "timeToWave": 200,
+                "wave": 1,
+                "survivalEnabled": true,
+                "invaders": {
+                    "bodies": []
+                }
+            },
+            "visual": {
+                "roomName": "sim"
+            }
+        }
+    },
+    "time": 16384,
+    "cpuLimit": null,
+    "cpu": {
+        "tickLimit": null
+    },
+    "map": {
+        "visual": {}
+    },
+    "gcl": {
+        "level": 1,
+        "progress": 0,
+        "progressTotal": 1000000
+    },
+    "gpl": {
+        "level": 0,
+        "progress": 0,
+        "progressTotal": 1000
+    },
+    "market": {
+        "credits": 0,
+        "incomingTransactions": [],
+        "outgoingTransactions": [],
+        "orders": {}
+    },
+    "resources": {},
+    "shard": {}
+}

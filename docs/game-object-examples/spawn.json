@@ -1,0 +1,44 @@
+{
+    "Spawn1": {
+        "id": "b4e3c901f225952b8a68966f",
+        "room": {
+            "name": "sim",
+            "energyAvailable": 300,
+            "energyCapacityAvailable": 300,
+            "survivalInfo": {
+                "mode": "survival",
+                "status": "active",
+                "user": "64c10985bd0248c0e0db520e",
+                "score": 0,
+                "timeToWave": 200,
+                "wave": 1,
+                "survivalEnabled": true,
+                "invaders": {
+                    "bodies": []
+                }
+            },
+            "visual": {
+                "roomName": "sim"
+            }
+        },
+        "pos": {
+            "x": 24,
+            "y": 22,
+            "roomName": "sim"
+        },
+        "name": "Spawn1",
+        "energy": 300,
+        "energyCapacity": 300,
+        "spawning": null,
+        "store": {
+            "energy": 300
+        },
+        "owner": {
+            "username": "Ryan_"
+        },
+        "my": true,
+        "hits": 5000,
+        "hitsMax": 5000,
+        "structureType": "spawn"
+    }
+}
