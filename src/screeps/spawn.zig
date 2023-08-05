@@ -1,4 +1,6 @@
-const js = @import("../js_bind.zig");
+const std = @import("std");
+
+const js = @import("js_bind.zig");
 const constants = @import("constants.zig");
 const creep = @import("creep.zig");
 
@@ -9,6 +11,13 @@ const ScreepsError = constants.ScreepsError;
 pub const Spawn = struct {
     name: []const u8,
     obj: js.Object,
+
+    const Self = @This();
+    pub const js_tag = js.Value.Tag.object;
+
+    pub fn fromValue(value: *const js.Value) Self {
+        return Self{ .name = "", .obj = js.Object.fromValue(value) };
+    }
 
     /// Load a Spawn from the game world.
     ///
@@ -26,10 +35,31 @@ pub const Spawn = struct {
         };
     }
 
+    /// Description
+    /// -----------
+    /// Return the reference of the Javascript object this holds.
+    ///
+    /// Returns
+    /// -------
+    /// Reference to a Javascript object.
+    ///
+    pub fn getRef(self: *const Self) u64 {
+        return self.obj.getRef();
+    }
+
+    pub fn getName(self: *const Self, allocator: std.mem.Allocator) ![]const u8 {
+        const js_string = try self.obj.get("name", js.String);
+        return js_string.getOwnedSlice(allocator);
+    }
+
+    // pub fn getName(self: *const Self) !js.String {
+    //     return self.obj.get("name", js.String);
+    // }
+
     /// Spawn a new creep.
     ///
     pub fn spawnCreep(self: *const Spawn, blueprint: *const Creep) !void {
-        const parts: js.Array = js.Array.new();
+        const parts = js.Array(js.String).new();
 
         for (blueprint.parts) |part, i| {
             parts.set(i, js.String.from(@tagName(part)));

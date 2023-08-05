@@ -3,6 +3,7 @@ const creep = @import("creep.zig");
 const game = @import("game.zig");
 const spawn = @import("spawn.zig");
 
+pub const js = @import("js_bind.zig");
 pub const Game = game.Game;
 pub const Creep = creep.Creep;
 pub const Spawn = spawn.Spawn;

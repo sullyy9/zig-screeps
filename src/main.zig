@@ -3,11 +3,13 @@ const fmt = std.fmt;
 const logging = std.log.scoped(.main);
 const allocator = std.heap.page_allocator;
 
-const js = @import("js_bind.zig");
 const screeps = @import("screeps/screeps.zig");
+const js = screeps.js;
 
+const Game = screeps.Game;
 const Creep = screeps.Creep;
 const Spawn = screeps.Spawn;
+const ArrayIterator = js.ArrayIterator;
 
 extern "sysjs" fn wzLogObject(ref: u64) void;
 extern "sysjs" fn wzLogWrite(str: [*]const u8, len: u32) void;
@@ -36,9 +38,9 @@ pub fn log(
 //////////////////////////////////////////////////
 
 export fn run(game_ref: u32) void {
-    const game = js.Object.fromRef(game_ref);
+    const game = Game.fromRef(game_ref);
 
-    if (Spawn.fromGame(&game, "Spawn1")) |spawn| {
+    if (game.getSpawn("Spawn1")) |spawn| {
         const creep = Creep{ .name = "Harvester", .parts = &[_]Creep.Part{ .work, .carry, .move } };
 
         spawn.spawnCreep(&creep) catch |err| {
