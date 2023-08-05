@@ -9,6 +9,7 @@ const screeps = @import("screeps/screeps.zig");
 const Creep = screeps.Creep;
 const Spawn = screeps.Spawn;
 
+extern "sysjs" fn wzLogObject(ref: u64) void;
 extern "sysjs" fn wzLogWrite(str: [*]const u8, len: u32) void;
 extern "sysjs" fn wzLogFlush() void;
 
