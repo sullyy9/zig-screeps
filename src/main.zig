@@ -15,6 +15,17 @@ extern "sysjs" fn wzLogObject(ref: u64) void;
 extern "sysjs" fn wzLogWrite(str: [*]const u8, len: u32) void;
 extern "sysjs" fn wzLogFlush() void;
 
+// 100KB of persistant memory.
+var persistant_memory: [1024 * 100]u8 = undefined;
+
+export fn persistantMemoryAddress() *[persistant_memory.len]u8 {
+    return &persistant_memory;
+}
+
+export fn persistantMemoryLength() u32 {
+    return persistant_memory.len;
+}
+
 //////////////////////////////////////////////////
 
 pub fn log(
@@ -24,7 +35,7 @@ pub fn log(
     args: anytype,
 ) void {
     // Implementation here
-    const str_pre = fmt.allocPrint(allocator, "{s} - {s} - ", .{ @tagName(message_level), @tagName(scope) }) catch return;
+    const str_pre = fmt.allocPrint(allocator, "| {s: <4} | {s: <8} | ", .{ @tagName(message_level), @tagName(scope) }) catch return;
     defer allocator.free(str_pre);
 
     const str_msg = fmt.allocPrint(allocator, format, args) catch return;
@@ -39,6 +50,11 @@ pub fn log(
 
 export fn run(game_ref: u32) void {
     const game = Game.fromRef(game_ref);
+
+    logging.info("Module start", .{});
+    logging.info("--------------------", .{});
+    logging.info("Persistant memory:", .{});
+    logging.info("{s}", .{persistant_memory});
 
     if (game.getSpawn("Spawn1")) |spawn| {
         const creep = Creep{ .name = "Harvester", .parts = &[_]Creep.Part{ .work, .carry, .move } };
