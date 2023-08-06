@@ -52,4 +52,10 @@ pub const Game = struct {
             .obj = try spawns.get(name, js.Object),
         };
     }
+
+    pub fn getSpawns(self: *const Self) !js.Array(Spawn) {
+        const spawns = try self.obj.get("spawns", js.Object);
+
+        return spawns.getValues(Spawn);
+    }
 };

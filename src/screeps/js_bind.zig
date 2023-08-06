@@ -55,17 +55,16 @@ fn assertTypeImplementsInterface(comptime T: type) void {
 }
 
 fn tagFromType(comptime T: type) Value.Tag {
-    if (@typeInfo(T) == .Struct) {
-        assertTypeImplementsInterface(T);
-        return T.js_tag;
-    }
-
     return switch (T) {
         Function => .func,
         bool => .bool,
         void => .undefined,
         else => switch (@typeInfo(T)) {
             .Int, .Float, .Enum => .num,
+            .Struct => {
+                assertTypeImplementsInterface(T);
+                return T.js_tag;
+            },
             else => {
                 @compileLog("Type: ", @typeName(T));
                 @compileError("Invalid type");
@@ -75,12 +74,8 @@ fn tagFromType(comptime T: type) Value.Tag {
 }
 
 fn typeFromValue(comptime T: type, value: *const js.Value) T {
-    if (@typeInfo(T) == .Struct) {
-        assertTypeImplementsInterface(T);
-        return T.fromValue(value);
-    }
-
     return switch (comptime T) {
+        Function => value.view(.func),
         Value => value,
         bool => value.view(.bool),
         void => void,
@@ -88,6 +83,10 @@ fn typeFromValue(comptime T: type, value: *const js.Value) T {
             .Int => @floatToInt(T, value.view(.num)), // Should really check this is safe.
             .Float => @floatCast(T, value.view(.num)),
             .Enum => |e| @intToEnum(T, @floatToInt(e.tag_type, value.view(.num))),
+            .Struct => {
+                assertTypeImplementsInterface(T);
+                return T.fromValue(value);
+            },
             else => {
                 @compileLog("Type: ", @typeName(T));
                 @compileError("Invalid type");
@@ -151,18 +150,30 @@ pub const Object = struct {
     }
 
     /// Retrieve the value of the given property.
-    pub fn get(self: *const Self, property: []const u8, comptime Type: type) !Type {
-        comptime var param_tag = tagFromType(Type);
+    pub fn get(self: *const Self, property: []const u8, comptime T: type) !T {
+        comptime var param_tag = tagFromType(T);
         const value: Value = self.obj.get(property);
 
         // If in debug mode check that the property type is as expected.
         if (comptime builtin.mode == .Debug) {
             if (!value.is(param_tag)) {
+                logging.err("Wrong property type when fetching property '{s}'. Expected '{s}'. Found '{s}'", .{ property, @typeName(T), @tagName(value.tag) });
                 return BindingError.WrongPropertyType;
             }
         }
 
-        return typeFromValue(Type, &value);
+        return typeFromValue(T, &value);
+    }
+
+    pub fn getValues(self: *const Self, comptime T: type) !Array(T) {
+        const global = Self{ .obj = js.global() };
+
+        // Mach-sysjs picks this up as a function but it's really a type.
+        // Need manually convert it to an object.
+        const object_func = try global.get("Object", Function);
+        const object_type = Self{ .obj = js.Object{ .ref = object_func.ref } };
+
+        return object_type.call("values", &.{self}, Array(T));
     }
 
     /// Call the given method.
@@ -335,7 +346,6 @@ pub fn Array(comptime T: type) type {
             // If in debug mode check that the property type is as expected.
             if (comptime builtin.mode == .Debug) {
                 if (!value.is(comptime tagFromType(T))) {
-                    logging.err("Wrong type {s} {} {}", .{@typeName(T), tagFromType(T), value.tag});
                     return BindingError.WrongIndexedType;
                 }
             }

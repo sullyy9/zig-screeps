@@ -26,6 +26,14 @@ export fn persistantMemoryLength() u32 {
     return persistant_memory.len;
 }
 
+export fn run(game_ref: u32) void {
+    const game = Game.fromRef(game_ref);
+
+    run_internal(&game) catch |err| {
+        logging.err("{!}", .{err});
+    };
+}
+
 //////////////////////////////////////////////////
 
 pub fn log(
@@ -48,21 +56,35 @@ pub fn log(
 
 //////////////////////////////////////////////////
 
-export fn run(game_ref: u32) void {
-    const game = Game.fromRef(game_ref);
-
+fn run_internal(game: *const Game) !void {
+    logging.info(" ", .{});
     logging.info("Module start", .{});
     logging.info("--------------------", .{});
-    logging.info("Persistant memory:", .{});
-    logging.info("{s}", .{persistant_memory});
 
-    if (game.getSpawn("Spawn1")) |spawn| {
-        const creep = Creep{ .name = "Harvester", .parts = &[_]Creep.Part{ .work, .carry, .move } };
+    // Load the world state. We can either do this via a combination of:
+    // 1. Investigating the Game object (possibly quite slow due to lots of boundry crossing).
+    // 2. Using data saved in persistant memory from the previous state (presumably faster???).
+    //
+    // It's possible for persistant memory to be completely wiped out so loading entirely from the
+    // Game needs to be possible.
+    //
+    // Things like creep and structure ID's are good candidates for storing in memory.
+    // Memory format? intended to be JSON but would something like ProtBuf be faster?
+    //
 
-        spawn.spawnCreep(&creep) catch |err| {
-            logging.err("{}", .{err});
-        };
-    } else |err| {
-        logging.err("{}", .{err});
+    const spawns = try game.getSpawns();
+    var iter: ArrayIterator(Spawn) = spawns.iterate();
+
+    while (try iter.next()) |spawn| {
+        const name = spawn.getName(allocator) catch "Failed to get name";
+        defer allocator.free(name);
+
+        logging.info("spawn: {s}", .{name});
     }
+
+    const spawn = try game.getSpawn("Spawn1");
+    const creep = Creep{ .name = "Harvester", .parts = &[_]Creep.Part{ .work, .carry, .move } };
+    try spawn.spawnCreep(&creep);
+
+    return screeps.ScreepsError.NotOwner;
 }
