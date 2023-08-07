@@ -14,4 +14,6 @@ pub const Room = room.Room;
 pub const CreepPart = creep.Part;
 pub const CreepBlueprint = creep.Blueprint;
 
+pub const SearchTarget = constants.SearchTarget;
+
 pub const ScreepsError = constants.ScreepsError;

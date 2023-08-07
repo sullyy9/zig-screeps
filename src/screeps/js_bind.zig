@@ -52,6 +52,10 @@ fn assertTypeImplementsInterface(comptime T: type) void {
     if (!(@TypeOf(T.js_tag) == Value.Tag)) {
         @compileError(std.fmt.comptimePrint("Type '{s}' implements js_tag declaration but declaration is wrong type", .{@typeName(T)}));
     }
+
+    if (!@hasDecl(T, "fromValue()")) {
+        @compileError(comptime std.fmt.comptimePrint("Type '{s}' doesn't implement fromValue", .{type_name}));
+    }
 }
 
 fn tagFromType(comptime T: type) Value.Tag {

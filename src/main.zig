@@ -15,8 +15,11 @@ const Game = screeps.Game;
 const Spawn = screeps.Spawn;
 const Creep = screeps.Creep;
 const World = world.World;
+
 const CreepBlueprint = screeps.CreepBlueprint;
 const CreepPart = screeps.CreepPart;
+
+const SearchTarget = screeps.SearchTarget;
 
 extern "sysjs" fn wzLogObject(ref: u64) void;
 extern "sysjs" fn wzLogWrite(str: [*]const u8, len: u32) void;
@@ -63,6 +66,29 @@ pub fn log(
 
 //////////////////////////////////////////////////
 
+///
+/// Commander  <-  Directives  <-  Senior Commander | Receive objectives.
+/// Commander <--> Observers   <-  World            | Evaluate world state.
+/// Commander  ->  Action      ->  World            | Work towards objectives with currently available resources.
+/// Commander  ->  Desire      ->  Senior Commander | Report resources required to improve efficacy.
+///
+/// Commander defines what parameters it needs to observe. Observers provide a lens through which
+/// to view them.
+///
+const Commander = struct {
+    const Self = @This();
+
+    pub fn setDirectives(self: *const Self) void {
+        _ = self;
+    }
+
+    pub fn run(self: *const Self) void {
+        _ = self;
+    }
+};
+
+//////////////////////////////////////////////////
+
 fn run_internal(game: *const Game) !void {
     logging.info(" ", .{});
     logging.info("Module start", .{});
@@ -106,7 +132,9 @@ fn run_internal(game: *const Game) !void {
         const name_obj: JSString = try room.getName();
         const name = try name_obj.getOwnedSlice(allocator);
         defer allocator.free(name);
-
         logging.info("room name: {s}", .{name});
+
+        const sources = try room.find(SearchTarget.sources);
+        _ = sources;
     }
 }

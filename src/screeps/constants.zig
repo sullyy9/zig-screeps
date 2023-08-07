@@ -1,3 +1,14 @@
+const std = @import("std");
+
+const creep = @import("creep.zig");
+const spawn = @import("spawn.zig");
+const room = @import("room.zig");
+const js = @import("js_bind.zig");
+
+const Spawn = spawn.Spawn;
+const Creep = creep.Creep;
+const Source = room.Source;
+
 pub const ErrorVal = enum(i32) {
     ok = 0,
     not_owner = -1,
@@ -52,4 +63,82 @@ pub const ScreepsError = error{
     NoBodypart,
     RclNotEnough,
     GclNotEnough,
+};
+
+pub const SearchTarget = enum(u32) {
+    exit_top = 1,
+    exit_right = 3,
+    exit_bottom = 5,
+    exit_left = 7,
+    exit = 10,
+    creeps = 101,
+    my_creeps = 102,
+    hostile_creeps = 103,
+    sources_active = 104,
+    sources = 105,
+    dropped_resources = 106,
+    structures = 107,
+    my_structures = 108,
+    hostile_structures = 109,
+    flags = 110,
+    construction_sites = 111,
+    my_spawns = 112,
+    hostile_spawns = 113,
+    my_construction_sites = 114,
+    hostile_construction_sites = 115,
+    minerals = 116,
+    nukes = 117,
+    tombstones = 118,
+    power_creeps = 119,
+    my_power_creeps = 120,
+    hostile_power_creeps = 121,
+    deposits = 122,
+    ruins = 123,
+
+    const Self = @This();
+
+    /// Description
+    /// -----------
+    /// Return a generic Value.
+    ///
+    /// Returns
+    /// -------
+    /// Generic value referencing the Javascript object.
+    ///
+    pub fn toValue(self: *const Self) js.Value {
+        return js.Value{ .tag = .num, .val = .{ .num = std.math.lossyCast(f64, @enumToInt(self.*)) } };
+    }
+
+    pub fn getType(comptime self: Self) type {
+        return switch (self) {
+            Self.exit_top => unreachable,
+            Self.exit_right => unreachable,
+            Self.exit_bottom => unreachable,
+            Self.exit_left => unreachable,
+            Self.exit => unreachable,
+            Self.creeps => Creep,
+            Self.my_creeps => Creep,
+            Self.hostile_creeps => Creep,
+            Self.sources_active => Source,
+            Self.sources => Source,
+            Self.dropped_resources => unreachable,
+            Self.structures => unreachable,
+            Self.my_structures => unreachable,
+            Self.hostile_structures => unreachable,
+            Self.flags => unreachable,
+            Self.construction_sites => unreachable,
+            Self.my_spawns => Spawn,
+            Self.hostile_spawns => Spawn,
+            Self.my_construction_sites => unreachable,
+            Self.hostile_construction_sites => unreachable,
+            Self.minerals => unreachable,
+            Self.nukes => unreachable,
+            Self.tombstones => unreachable,
+            Self.power_creeps => unreachable,
+            Self.my_power_creeps => unreachable,
+            Self.hostile_power_creeps => unreachable,
+            Self.deposits => unreachable,
+            Self.ruins => unreachable,
+        };
+    }
 };
