@@ -408,6 +408,17 @@ pub fn Array(comptime T: type) type {
                 .len = self.len(),
             };
         }
+
+        pub fn getOwnedSlice(self: *const Self, allocator: std.mem.Allocator) ![]T {
+            var memory = try allocator.alloc(T, self.len());
+            errdefer allocator.free(memory);
+
+            for (memory) |*element, i| {
+                element.* = try self.get(i);
+            }
+
+            return memory;
+        }
     };
 }
 

@@ -5,6 +5,7 @@ const constants = @import("constants.zig");
 const creep = @import("creep.zig");
 
 const Creep = creep.Creep;
+const CreepBlueprint = creep.Blueprint;
 const ErrorVal = constants.ErrorVal;
 const ScreepsError = constants.ScreepsError;
 
@@ -15,6 +16,18 @@ pub const Spawn = struct {
     const Self = @This();
     pub const js_tag = js.Value.Tag.object;
 
+    /// Description
+    /// -----------
+    /// Return a new Spawn from a generic value referencing an existing Javascript object.
+    ///
+    /// Parameters
+    /// ----------
+    /// - value: Generic value type.
+    /// 
+    /// Returns
+    /// -------
+    /// New Spawn referencing an existing Javascript object.
+    ///
     pub fn fromValue(value: *const js.Value) Self {
         return Self{ .name = "", .obj = js.Object.fromValue(value) };
     }
@@ -47,18 +60,21 @@ pub const Spawn = struct {
         return self.obj.getRef();
     }
 
-    pub fn getName(self: *const Self, allocator: std.mem.Allocator) ![]const u8 {
-        const js_string = try self.obj.get("name", js.String);
-        return js_string.getOwnedSlice(allocator);
+    /// Description
+    /// -----------
+    /// Return the name of the Spawn.
+    ///
+    /// Returns
+    /// -------
+    /// The spawn's name.
+    ///
+    pub fn getName(self: *const Self) !js.String {
+        return self.obj.get("name", js.String);
     }
-
-    // pub fn getName(self: *const Self) !js.String {
-    //     return self.obj.get("name", js.String);
-    // }
 
     /// Spawn a new creep.
     ///
-    pub fn spawnCreep(self: *const Spawn, blueprint: *const Creep) !void {
+    pub fn spawnCreep(self: *const Spawn, blueprint: *const CreepBlueprint) !void {
         const parts = js.Array(js.String).new();
 
         for (blueprint.parts) |part, i| {

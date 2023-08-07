@@ -6,10 +6,17 @@ const allocator = std.heap.page_allocator;
 const screeps = @import("screeps/screeps.zig");
 const js = screeps.js;
 
-const Game = screeps.Game;
-const Creep = screeps.Creep;
-const Spawn = screeps.Spawn;
+const world = @import("world.zig");
+
 const ArrayIterator = js.ArrayIterator;
+const JSString = js.String;
+
+const Game = screeps.Game;
+const Spawn = screeps.Spawn;
+const Creep = screeps.Creep;
+const World = world.World;
+const CreepBlueprint = screeps.CreepBlueprint;
+const CreepPart = screeps.CreepPart;
 
 extern "sysjs" fn wzLogObject(ref: u64) void;
 extern "sysjs" fn wzLogWrite(str: [*]const u8, len: u32) void;
@@ -70,21 +77,36 @@ fn run_internal(game: *const Game) !void {
     //
     // Things like creep and structure ID's are good candidates for storing in memory.
     // Memory format? intended to be JSON but would something like ProtBuf be faster?
-    //
 
-    const spawns = try game.getSpawns();
-    var iter: ArrayIterator(Spawn) = spawns.iterate();
+    const world_state: World = try World.fromGame(allocator, game);
+    defer world_state.deinit();
 
-    while (try iter.next()) |spawn| {
-        const name = spawn.getName(allocator) catch "Failed to get name";
+    for (world_state.spawns) |spawn| {
+        const name_obj: JSString = try spawn.getName();
+        const name = try name_obj.getOwnedSlice(allocator);
         defer allocator.free(name);
 
-        logging.info("spawn: {s}", .{name});
+        logging.info("spawn name: {s}", .{name});
+
+        if (std.mem.eql(u8, name, "Spawn1")) {
+            const creep = CreepBlueprint{ .name = "Harvester", .parts = &[_]CreepPart{ .work, .carry, .move } };
+            spawn.spawnCreep(&creep) catch {};
+        }
     }
 
-    const spawn = try game.getSpawn("Spawn1");
-    const creep = Creep{ .name = "Harvester", .parts = &[_]Creep.Part{ .work, .carry, .move } };
-    try spawn.spawnCreep(&creep);
+    for (world_state.creeps) |creep| {
+        const name_obj: JSString = try creep.getName();
+        const name = try name_obj.getOwnedSlice(allocator);
+        defer allocator.free(name);
 
-    return screeps.ScreepsError.NotOwner;
+        logging.info("creep name: {s}", .{name});
+    }
+
+    for (world_state.rooms) |room| {
+        const name_obj: JSString = try room.getName();
+        const name = try name_obj.getOwnedSlice(allocator);
+        defer allocator.free(name);
+
+        logging.info("room name: {s}", .{name});
+    }
 }
