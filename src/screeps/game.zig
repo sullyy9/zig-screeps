@@ -13,39 +13,7 @@ pub const Game = struct {
     obj: js.Object,
 
     const Self = @This();
-    pub const js_tag = js.Value.Tag.object;
-
-    comptime {
-        js.assertIsJSObjectReference(Self);
-    }
-
-    /// Description
-    /// -----------
-    /// Return a new Game from a generic value referencing an existing Javascript object.
-    ///
-    /// Parameters
-    /// ----------
-    /// - value: Generic value type.
-    ///
-    /// Returns
-    /// -------
-    /// New Game referencing an existing Javascript object.
-    ///
-    pub fn fromValue(value: *const js.Value) Self {
-        return Self{ .obj = js.Object.fromValue(value) };
-    }
-
-    /// Description
-    /// -----------
-    /// Return a generic Value referening this Javascript object.
-    ///
-    /// Returns
-    /// -------
-    /// Generic value referencing the Javascript object.
-    ///
-    pub fn asValue(self: *const Self) js.Value {
-        return js.Value{ .tag = .object, .val = .{ .ref = self.obj.ref } };
-    }
+    pub usingnamespace js.ObjectReference(Self);
 
     /// Description
     /// -----------

@@ -8,7 +8,7 @@ pub const Value = js.Value;
 pub const Tag = Value.Tag;
 pub const Function = js.Function;
 
-const BindingError = error{
+pub const BindingError = error{
     /// Description
     /// -----------
     /// The type of a Javascript object's property was not the expected type.
@@ -91,7 +91,6 @@ fn typeFromValue(comptime T: type, value: *const js.Value) T {
         else => switch (@typeInfo(T)) {
             .Int => @floatToInt(T, value.view(.num)), // Should really check this is safe.
             .Float => @floatCast(T, value.view(.num)),
-            // .Enum => |e| @intToEnum(T, @floatToInt(e.tag_type, value.view(.num))),
             .Struct, .Enum => {
                 assertIsJSObjectReference(T);
                 return T.fromValue(value);
@@ -109,6 +108,10 @@ pub const Object = struct {
 
     const Self = @This();
     const js_tag = Value.Tag.object;
+
+    comptime {
+        assertIsJSObjectReference(Self);
+    }
 
     /// Description
     /// -----------
@@ -198,8 +201,38 @@ pub const Object = struct {
     }
 };
 
-comptime {
-    assertIsJSObjectReference(Object);
+pub fn ObjectReference(comptime Self: type) type {
+    return struct {
+        pub const js_tag = Value.Tag.object;
+
+        /// Description
+        /// -----------
+        /// Return a new Source from a generic value referencing an existing Javascript object.
+        ///
+        /// Parameters
+        /// ----------
+        /// - value: Generic value type.
+        ///
+        /// Returns
+        /// -------
+        /// New Source referencing an existing Javascript object.
+        ///
+        pub fn fromValue(value: *const Value) Self {
+            return Self{ .obj = Object.fromValue(value) };
+        }
+
+        /// Description
+        /// -----------
+        /// Return a generic Value referening this Javascript object.
+        ///
+        /// Returns
+        /// -------
+        /// Generic value referencing the Javascript object.
+        ///
+        pub fn asValue(self: *const Self) Value {
+            return self.obj.asValue();
+        }
+    };
 }
 
 pub const String = struct {

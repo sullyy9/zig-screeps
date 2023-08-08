@@ -10,43 +10,10 @@ const ErrorVal = constants.ErrorVal;
 const ScreepsError = constants.ScreepsError;
 
 pub const Spawn = struct {
-    name: []const u8,
     obj: js.Object,
 
     const Self = @This();
-    pub const js_tag = js.Value.Tag.object;
-
-    comptime {
-        js.assertIsJSObjectReference(Self);
-    }
-
-    /// Description
-    /// -----------
-    /// Return a new Spawn from a generic value referencing an existing Javascript object.
-    ///
-    /// Parameters
-    /// ----------
-    /// - value: Generic value type.
-    ///
-    /// Returns
-    /// -------
-    /// New Spawn referencing an existing Javascript object.
-    ///
-    pub fn fromValue(value: *const js.Value) Self {
-        return Self{ .name = "", .obj = js.Object.fromValue(value) };
-    }
-
-    /// Description
-    /// -----------
-    /// Return a generic Value referening this Javascript object.
-    ///
-    /// Returns
-    /// -------
-    /// Generic value referencing the Javascript object.
-    ///
-    pub fn asValue(self: *const Self) js.Value {
-        return js.Value{ .tag = .object, .val = .{ .ref = self.obj.ref } };
-    }
+    pub usingnamespace js.ObjectReference(Self);
 
     /// Description
     /// -----------
