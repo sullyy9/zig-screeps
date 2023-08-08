@@ -2,6 +2,12 @@ const std = @import("std");
 
 const js = @import("js_bind.zig");
 
+const room = @import("room.zig");
+const constants = @import("constants.zig");
+
+const RoomObject = room.RoomObject;
+const ErrorVal = constants.ErrorVal;
+
 /// The possible parts a creep can be made up from. In the Screeps API, these are defined as
 /// strings. They are named here such that @tagname will give the correct string for each.
 pub const Part = enum {
@@ -33,7 +39,7 @@ pub const Creep = struct {
     /// Parameters
     /// ----------
     /// - value: Generic value type.
-    /// 
+    ///
     /// Returns
     /// -------
     /// New Creep referencing an existing Javascript object.
@@ -76,5 +82,12 @@ pub const Creep = struct {
     ///
     pub fn getName(self: *const Self) !js.String {
         return self.obj.get("name", js.String);
+    }
+
+    pub fn moveTo(self: *const Self, target: anytype) !void {
+        const result = try self.obj.call("moveTo", &.{target}, ErrorVal);
+        if (result.toError()) |err| {
+            return err;
+        }
     }
 };

@@ -9,7 +9,11 @@ pub const js = @import("js_bind.zig");
 pub const Game = game.Game;
 pub const Spawn = spawn.Spawn;
 pub const Creep = creep.Creep;
+
 pub const Room = room.Room;
+pub const RoomPosition = room.RoomPosition;
+pub const RoomObject = room.RoomObject;
+pub const Source = room.Source;
 
 pub const CreepPart = creep.Part;
 pub const CreepBlueprint = creep.Blueprint;

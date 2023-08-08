@@ -56,6 +56,57 @@ pub const Room = struct {
     }
 };
 
+const RoomPosition = struct {
+    obj: js.Object,
+
+    const Self = @This();
+    pub const js_tag = js.Value.Tag.object;
+
+    /// Description
+    /// -----------
+    /// Return a new RoomPosition from a generic value referencing an existing Javascript object.
+    ///
+    /// Parameters
+    /// ----------
+    /// - value: Generic value type.
+    ///
+    /// Returns
+    /// -------
+    /// New RoomPosition referencing an existing Javascript object.
+    ///
+    pub fn fromValue(value: *const js.Value) Self {
+        return Self{ .obj = js.Object.fromValue(value) };
+    }
+
+    pub fn getX(self: *const Self) !u32 {
+        return self.obj.get("x", u32);
+    }
+
+    pub fn getY(self: *const Self) !u32 {
+        return self.obj.get("y", u32);
+    }
+};
+
+pub const RoomObject = struct {
+    obj: js.Object,
+
+    const Self = @This();
+
+    pub fn effects(self: *const Self) void {
+        _ = self;
+        unreachable;
+    }
+
+    pub fn pos(self: *const Self) !RoomPosition {
+        return self.obj.pos();
+    }
+
+    pub fn room(self: *const Self) Room {
+        _ = self;
+        unreachable;
+    }
+};
+
 pub const Source = struct {
     obj: js.Object,
 
@@ -80,6 +131,18 @@ pub const Source = struct {
 
     /// Description
     /// -----------
+    /// Return a generic Value referening this Javascript object.
+    ///
+    /// Returns
+    /// -------
+    /// Generic value referencing the Javascript object.
+    ///
+    pub fn toValue(self: *const Self) js.Value {
+        return self.obj.toValue();
+    }
+
+    /// Description
+    /// -----------
     /// Return the reference of the Javascript object this holds.
     ///
     /// Returns
@@ -88,5 +151,9 @@ pub const Source = struct {
     ///
     pub fn getRef(self: *const Self) u64 {
         return self.obj.getRef();
+    }
+
+    pub fn pos(self: *const Self) !RoomPosition {
+        return self.obj.call("pos", &.{}, RoomPosition);
     }
 };

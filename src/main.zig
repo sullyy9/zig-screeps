@@ -16,6 +16,9 @@ const Spawn = screeps.Spawn;
 const Creep = screeps.Creep;
 const World = world.World;
 
+pub const Source = screeps.Source;
+pub const RoomObject = screeps.RoomObject;
+
 const CreepBlueprint = screeps.CreepBlueprint;
 const CreepPart = screeps.CreepPart;
 
@@ -120,21 +123,24 @@ fn run_internal(game: *const Game) !void {
         }
     }
 
+    for (world_state.rooms) |room| {
+        const name_obj: JSString = try room.getName();
+        const name = try name_obj.getOwnedSlice(allocator);
+        defer allocator.free(name);
+
+        logging.info("room name: {s}", .{name});
+    }
+
     for (world_state.creeps) |creep| {
         const name_obj: JSString = try creep.getName();
         const name = try name_obj.getOwnedSlice(allocator);
         defer allocator.free(name);
 
         logging.info("creep name: {s}", .{name});
-    }
 
-    for (world_state.rooms) |room| {
-        const name_obj: JSString = try room.getName();
-        const name = try name_obj.getOwnedSlice(allocator);
-        defer allocator.free(name);
-        logging.info("room name: {s}", .{name});
+        const sources = try world_state.rooms[0].find(SearchTarget.sources);
+        const source = try sources.get(0);
 
-        const sources = try room.find(SearchTarget.sources);
-        _ = sources;
+        try creep.moveTo(source);
     }
 }

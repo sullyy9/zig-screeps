@@ -82,7 +82,7 @@ fn typeFromValue(comptime T: type, value: *const js.Value) T {
         Function => value.view(.func),
         Value => value,
         bool => value.view(.bool),
-        void => void,
+        void => void{},
         else => switch (@typeInfo(T)) {
             .Int => @floatToInt(T, value.view(.num)), // Should really check this is safe.
             .Float => @floatCast(T, value.view(.num)),
