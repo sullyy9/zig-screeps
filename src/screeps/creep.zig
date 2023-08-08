@@ -32,6 +32,10 @@ pub const Creep = struct {
     const Self = @This();
     pub const js_tag = js.Value.Tag.object;
 
+    comptime {
+        js.assertIsJSObjectReference(Self);
+    }
+
     /// Description
     /// -----------
     /// Return a new Creep from a generic value referencing an existing Javascript object.
@@ -56,7 +60,7 @@ pub const Creep = struct {
     /// -------
     /// Generic value referencing the Javascript object.
     ///
-    pub fn toValue(self: *const Self) js.Value {
+    pub fn asValue(self: *const Self) js.Value {
         return js.Value{ .tag = .object, .val = .{ .ref = self.obj.ref } };
     }
 

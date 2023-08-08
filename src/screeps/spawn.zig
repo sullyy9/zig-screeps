@@ -16,6 +16,10 @@ pub const Spawn = struct {
     const Self = @This();
     pub const js_tag = js.Value.Tag.object;
 
+    comptime {
+        js.assertIsJSObjectReference(Self);
+    }
+
     /// Description
     /// -----------
     /// Return a new Spawn from a generic value referencing an existing Javascript object.
@@ -23,7 +27,7 @@ pub const Spawn = struct {
     /// Parameters
     /// ----------
     /// - value: Generic value type.
-    /// 
+    ///
     /// Returns
     /// -------
     /// New Spawn referencing an existing Javascript object.
@@ -32,32 +36,16 @@ pub const Spawn = struct {
         return Self{ .name = "", .obj = js.Object.fromValue(value) };
     }
 
-    /// Load a Spawn from the game world.
-    ///
-    pub fn fromGame(game: *const js.Object, name: []const u8) !Spawn {
-        const spawns = try game.get("spawns", js.Object);
-
-        const has_spawn = try spawns.call("hasOwnProperty", &.{js.String.from(name)}, bool);
-        if (!has_spawn) {
-            return constants.ScreepsError.NotFound;
-        }
-
-        return Spawn{
-            .name = name,
-            .obj = try spawns.get(name, js.Object),
-        };
-    }
-
     /// Description
     /// -----------
-    /// Return the reference of the Javascript object this holds.
+    /// Return a generic Value referening this Javascript object.
     ///
     /// Returns
     /// -------
-    /// Reference to a Javascript object.
+    /// Generic value referencing the Javascript object.
     ///
-    pub fn getRef(self: *const Self) u64 {
-        return self.obj.getRef();
+    pub fn asValue(self: *const Self) js.Value {
+        return js.Value{ .tag = .object, .val = .{ .ref = self.obj.ref } };
     }
 
     /// Description

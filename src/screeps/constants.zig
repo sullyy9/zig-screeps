@@ -27,6 +27,41 @@ pub const ErrorVal = enum(i32) {
     gcl_not_enough = -15,
     _,
 
+    const Self = @This();
+    pub const js_tag = js.Value.Tag.num;
+
+    comptime {
+        js.assertIsJSObjectReference(Self);
+    }
+
+    /// Description
+    /// -----------
+    /// Return a new Game from a generic value referencing an existing Javascript object.
+    ///
+    /// Parameters
+    /// ----------
+    /// - value: Generic value type.
+    ///
+    /// Returns
+    /// -------
+    /// New Game referencing an existing Javascript object.
+    ///
+    pub fn fromValue(value: *const js.Value) Self {
+        return @intToEnum(Self, @floatToInt(@typeInfo(Self).Enum.tag_type, value.val.num));
+    }
+
+    /// Description
+    /// -----------
+    /// Return a generic Value.
+    ///
+    /// Returns
+    /// -------
+    /// Generic value referencing the Javascript object.
+    ///
+    pub fn asValue(self: *const Self) js.Value {
+        return js.Value{ .tag = .num, .val = .{ .num = std.math.lossyCast(f64, @enumToInt(self.*)) } };
+    }
+
     pub fn toError(self: ErrorVal) ?ScreepsError {
         return switch (self) {
             ErrorVal.not_owner => ScreepsError.NotOwner,
@@ -96,6 +131,27 @@ pub const SearchTarget = enum(u32) {
     ruins = 123,
 
     const Self = @This();
+    pub const js_tag = js.Value.Tag.num;
+
+    comptime {
+        js.assertIsJSObjectReference(Self);
+    }
+
+    /// Description
+    /// -----------
+    /// Return a new Game from a generic value referencing an existing Javascript object.
+    ///
+    /// Parameters
+    /// ----------
+    /// - value: Generic value type.
+    ///
+    /// Returns
+    /// -------
+    /// New Game referencing an existing Javascript object.
+    ///
+    pub fn fromValue(value: *const js.Value) Self {
+        return @intToEnum(Self, @floatToInt(@typeInfo(Self).Enum.tag_type, value.val.num));
+    }
 
     /// Description
     /// -----------
@@ -105,7 +161,7 @@ pub const SearchTarget = enum(u32) {
     /// -------
     /// Generic value referencing the Javascript object.
     ///
-    pub fn toValue(self: *const Self) js.Value {
+    pub fn asValue(self: *const Self) js.Value {
         return js.Value{ .tag = .num, .val = .{ .num = std.math.lossyCast(f64, @enumToInt(self.*)) } };
     }
 

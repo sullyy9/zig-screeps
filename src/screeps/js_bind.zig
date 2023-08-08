@@ -43,8 +43,9 @@ const module_name = @typeName(@This());
 /// ------
 /// True if the type conforms, false otherwise.
 ///
-fn assertTypeImplementsInterface(comptime T: type) void {
+pub fn assertIsJSObjectReference(comptime T: type) void {
     comptime var type_name = @typeName(T);
+
     if (!@hasDecl(T, "js_tag")) {
         @compileError(comptime std.fmt.comptimePrint("Type '{s}' doesn't implement js_tag declaration", .{type_name}));
     }
@@ -53,8 +54,12 @@ fn assertTypeImplementsInterface(comptime T: type) void {
         @compileError(std.fmt.comptimePrint("Type '{s}' implements js_tag declaration but declaration is wrong type", .{@typeName(T)}));
     }
 
-    if (!@hasDecl(T, "fromValue()")) {
+    if (!@hasDecl(T, "fromValue")) {
         @compileError(comptime std.fmt.comptimePrint("Type '{s}' doesn't implement fromValue", .{type_name}));
+    }
+
+    if (!@hasDecl(T, "asValue")) {
+        @compileError(comptime std.fmt.comptimePrint("Type '{s}' doesn't implement asValue", .{type_name}));
     }
 }
 
@@ -64,9 +69,9 @@ fn tagFromType(comptime T: type) Value.Tag {
         bool => .bool,
         void => .undefined,
         else => switch (@typeInfo(T)) {
-            .Int, .Float, .Enum => .num,
-            .Struct => {
-                assertTypeImplementsInterface(T);
+            .Int, .Float => .num,
+            .Struct, .Enum => {
+                assertIsJSObjectReference(T);
                 return T.js_tag;
             },
             else => {
@@ -86,9 +91,9 @@ fn typeFromValue(comptime T: type, value: *const js.Value) T {
         else => switch (@typeInfo(T)) {
             .Int => @floatToInt(T, value.view(.num)), // Should really check this is safe.
             .Float => @floatCast(T, value.view(.num)),
-            .Enum => |e| @intToEnum(T, @floatToInt(e.tag_type, value.view(.num))),
-            .Struct => {
-                assertTypeImplementsInterface(T);
+            // .Enum => |e| @intToEnum(T, @floatToInt(e.tag_type, value.view(.num))),
+            .Struct, .Enum => {
+                assertIsJSObjectReference(T);
                 return T.fromValue(value);
             },
             else => {
@@ -104,18 +109,6 @@ pub const Object = struct {
 
     const Self = @This();
     const js_tag = Value.Tag.object;
-
-    /// Description
-    /// -----------
-    /// Return a new Object from a reference to an existing Javascript object.
-    ///
-    /// Parameters
-    /// ----------
-    /// - ref: Reference of the javascript object.
-    ///
-    pub fn fromRef(ref: u64) Self {
-        return Self{ .obj = js.Object{ .ref = ref } };
-    }
 
     /// Description
     /// -----------
@@ -137,20 +130,20 @@ pub const Object = struct {
     /// -------
     /// Generic value referencing the Javascript object.
     ///
-    pub fn toValue(self: *const Self) Value {
+    pub fn asValue(self: *const Self) Value {
         return Value{ .tag = .object, .val = .{ .ref = self.obj.ref } };
     }
 
     /// Description
     /// -----------
-    /// Return the reference of the Javascript object this holds.
+    /// Return a new Object from a reference to an existing Javascript object.
     ///
-    /// Returns
-    /// -------
-    /// Reference to a Javascript object.
+    /// Parameters
+    /// ----------
+    /// - ref: Reference of the javascript object.
     ///
-    pub fn getRef(self: *const Self) u64 {
-        return self.obj.ref;
+    pub fn fromRef(ref: u64) Self {
+        return Self{ .obj = js.Object{ .ref = ref } };
     }
 
     /// Retrieve the value of the given property.
@@ -189,7 +182,7 @@ pub const Object = struct {
             if (@TypeOf(arg) == Value) {
                 arg_vals[i] = arg;
             } else {
-                arg_vals[i] = arg.toValue();
+                arg_vals[i] = arg.asValue();
             }
         }
 
@@ -204,6 +197,10 @@ pub const Object = struct {
         return typeFromValue(ReturnType, &result);
     }
 };
+
+comptime {
+    assertIsJSObjectReference(Object);
+}
 
 pub const String = struct {
     str: js.String,
@@ -237,20 +234,8 @@ pub const String = struct {
     /// -------
     /// Generic value referencing the Javascript object.
     ///
-    pub fn toValue(self: *const Self) Value {
+    pub fn asValue(self: *const Self) Value {
         return Value{ .tag = .str, .val = .{ .ref = self.str.ref } };
-    }
-
-    /// Description
-    /// -----------
-    /// Return the reference of the Javascript string object this holds.
-    ///
-    /// Returns
-    /// -------
-    /// Reference to a Javascript string object.
-    ///
-    pub fn getRef(self: *const Self) u64 {
-        return self.str.ref;
     }
 
     pub fn length(self: *const Self) usize {
@@ -261,6 +246,10 @@ pub const String = struct {
         return self.str.getOwnedSlice(allocator);
     }
 };
+
+comptime {
+    assertIsJSObjectReference(String);
+}
 
 /// Description
 /// -----------
@@ -285,18 +274,6 @@ pub fn Array(comptime T: type) type {
 
         /// Description
         /// -----------
-        /// Return a new Array from a reference to an existing Javascript array like object.
-        ///
-        /// Parameters
-        /// ----------
-        /// - ref: Reference of the javascript object.
-        ///
-        pub fn fromRef(ref: u64) Self {
-            return Self{ .obj = js.Object{ .ref = ref } };
-        }
-
-        /// Description
-        /// -----------
         /// Return a new Array from a generic value referencing an existing Javascript array like
         /// object.
         ///
@@ -316,20 +293,8 @@ pub fn Array(comptime T: type) type {
         /// -------
         /// Generic value referencing the Javascript object.
         ///
-        pub fn toValue(self: *const Self) Value {
+        pub fn asValue(self: *const Self) Value {
             return Value{ .tag = .object, .val = .{ .ref = self.obj.ref } };
-        }
-
-        /// Description
-        /// -----------
-        /// Return the reference of the Javascript array like object this holds.
-        ///
-        /// Returns
-        /// -------
-        /// Reference to a Javascript array like object.
-        ///
-        pub fn getRef(self: *const Self) u64 {
-            return self.str.ref;
         }
 
         /// Description
@@ -370,7 +335,7 @@ pub fn Array(comptime T: type) type {
             if (T == Value) {
                 self.obj.setIndex(index, value);
             } else {
-                self.obj.setIndex(index, value.toValue());
+                self.obj.setIndex(index, value.asValue());
             }
         }
 
@@ -424,6 +389,10 @@ pub fn Array(comptime T: type) type {
             return memory;
         }
     };
+}
+
+comptime {
+    assertIsJSObjectReference(Array(void));
 }
 
 /// Description
