@@ -40,16 +40,16 @@ pub const Game = struct {
     /// The spawn or an error.
     ///
     pub fn getSpawn(self: *const Self, name: []const u8) !Spawn {
-        const spawns = try self.obj.get("spawns", js.Object);
+        const spawns = self.obj.get("spawns", js.Object);
 
-        const has_spawn = try spawns.call("hasOwnProperty", &.{js.String.from(name)}, bool);
+        const has_spawn = spawns.call("hasOwnProperty", &.{js.String.from(name)}, bool);
         if (!has_spawn) {
             return ScreepsError.NotFound;
         }
 
         return Spawn{
             .name = name,
-            .obj = try spawns.get(name, js.Object),
+            .obj = spawns.get(name, js.Object),
         };
     }
 
@@ -61,8 +61,8 @@ pub const Game = struct {
     /// -------
     /// A Javascript array of owned spawns.
     ///
-    pub fn getSpawns(self: *const Self) !js.Array(Spawn) {
-        const spawns = try self.obj.get("spawns", js.Object);
+    pub fn getSpawns(self: *const Self) js.Array(Spawn) {
+        const spawns = self.obj.get("spawns", js.Object);
         return spawns.getValues(Spawn);
     }
 
@@ -74,8 +74,8 @@ pub const Game = struct {
     /// -------
     /// A Javascript array of owned creeps.
     ///
-    pub fn getCreeps(self: *const Self) !js.Array(Creep) {
-        const creeps = try self.obj.get("creeps", js.Object);
+    pub fn getCreeps(self: *const Self) js.Array(Creep) {
+        const creeps = self.obj.get("creeps", js.Object);
         return creeps.getValues(Creep);
     }
 
@@ -87,8 +87,8 @@ pub const Game = struct {
     /// -------
     /// A Javascript array of visible rooms.
     ///
-    pub fn getRooms(self: *const Self) !js.Array(Room) {
-        const creeps = try self.obj.get("rooms", js.Object);
+    pub fn getRooms(self: *const Self) js.Array(Room) {
+        const creeps = self.obj.get("rooms", js.Object);
         return creeps.getValues(Room);
     }
 };

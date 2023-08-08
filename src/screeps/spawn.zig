@@ -23,7 +23,7 @@ pub const Spawn = struct {
     /// -------
     /// The spawn's name.
     ///
-    pub fn getName(self: *const Self) !js.String {
+    pub fn getName(self: *const Self) js.String {
         return self.obj.get("name", js.String);
     }
 
@@ -36,7 +36,7 @@ pub const Spawn = struct {
             parts.set(i, js.String.from(@tagName(part)));
         }
 
-        const result = try self.obj.call("spawnCreep", &.{ parts, js.String.from(blueprint.name) }, ErrorVal);
+        const result = self.obj.call("spawnCreep", &.{ parts, js.String.from(blueprint.name) }, ErrorVal);
         if (result.toError()) |err| {
             return err;
         }

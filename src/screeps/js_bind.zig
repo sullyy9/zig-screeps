@@ -8,28 +8,6 @@ pub const Value = js.Value;
 pub const Tag = Value.Tag;
 pub const Function = js.Function;
 
-pub const BindingError = error{
-    /// Description
-    /// -----------
-    /// The type of a Javascript object's property was not the expected type.
-    ///
-    WrongPropertyType,
-
-    /// Description
-    /// -----------
-    /// The type of an indexed item in a Javascript object was not the expected type.
-    ///
-    WrongIndexedType,
-
-    /// Description
-    /// -----------
-    /// The type of a returned item from a Javascript function or method not the expected type.
-    ///
-    WrongReturnType,
-};
-
-const module_name = @typeName(@This());
-
 /// Description
 /// -----------
 /// Defines and checks conformance to the interface required for types to interoperate with this
@@ -150,7 +128,7 @@ pub const Object = struct {
     }
 
     /// Retrieve the value of the given property.
-    pub fn get(self: *const Self, property: []const u8, comptime T: type) !T {
+    pub fn get(self: *const Self, property: []const u8, comptime T: type) T {
         comptime var param_tag = tagFromType(T);
         const value: Value = self.obj.get(property);
 
@@ -158,26 +136,26 @@ pub const Object = struct {
         if (comptime builtin.mode == .Debug) {
             if (!value.is(param_tag)) {
                 logging.err("Wrong property type when fetching property '{s}'. Expected '{s}'. Found '{s}'", .{ property, @typeName(T), @tagName(value.tag) });
-                return BindingError.WrongPropertyType;
+                @panic("Wrong property type");
             }
         }
 
         return typeFromValue(T, &value);
     }
 
-    pub fn getValues(self: *const Self, comptime T: type) !Array(T) {
+    pub fn getValues(self: *const Self, comptime T: type) Array(T) {
         const global = Self{ .obj = js.global() };
 
         // Mach-sysjs picks this up as a function but it's really a type.
         // Need manually convert it to an object.
-        const object_func = try global.get("Object", Function);
+        const object_func = global.get("Object", Function);
         const object_type = Self{ .obj = js.Object{ .ref = object_func.ref } };
 
         return object_type.call("values", &.{self}, Array(T));
     }
 
     /// Call the given method.
-    pub fn call(self: *const Self, comptime method: []const u8, args: anytype, comptime ReturnType: type) !ReturnType {
+    pub fn call(self: *const Self, comptime method: []const u8, args: anytype, comptime ReturnType: type) ReturnType {
         comptime var return_tag = tagFromType(ReturnType);
 
         var arg_vals: [args.len]Value = undefined;
@@ -193,7 +171,8 @@ pub const Object = struct {
 
         if (comptime builtin.mode == .Debug) {
             if (!result.is(return_tag)) {
-                return BindingError.WrongReturnType;
+                logging.err("Wrong return type when calling method '{s}'. Expected '{s}'. Found '{s}'", .{ method, @typeName(ReturnType), @tagName(result.tag) });
+                @panic("Wrong return type");
             }
         }
 
@@ -342,13 +321,14 @@ pub fn Array(comptime T: type) type {
         /// -------
         /// The item or BindingError.WrongIndexedType.
         ///
-        pub fn get(self: *const Self, index: u32) !T {
+        pub fn get(self: *const Self, index: u32) T {
             const value: Value = self.obj.getIndex(index);
 
             // If in debug mode check that the property type is as expected.
             if (comptime builtin.mode == .Debug) {
                 if (!value.is(comptime tagFromType(T))) {
-                    return BindingError.WrongIndexedType;
+                    logging.err("Wrong return type when fetching array element '{d}'. Expected '{s}'. Found '{s}'", .{ index, @typeName(T), @tagName(value.tag) });
+                    @panic("Wrong indexed type");
                 }
             }
 
@@ -416,7 +396,7 @@ pub fn Array(comptime T: type) type {
             errdefer allocator.free(memory);
 
             for (memory) |*element, i| {
-                element.* = try self.get(i);
+                element.* = self.get(i);
             }
 
             return memory;

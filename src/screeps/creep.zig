@@ -42,23 +42,23 @@ pub const Creep = struct {
     /// -------
     /// The creeps name.
     ///
-    pub fn getName(self: *const Self) !js.String {
+    pub fn getName(self: *const Self) js.String {
         return self.obj.get("name", js.String);
     }
 
-    pub fn getStore(self: *const Self) !Store {
+    pub fn getStore(self: *const Self) Store {
         return self.obj.get("store", Store);
     }
 
     pub fn moveTo(self: *const Self, target: anytype) !void {
-        const result = try self.obj.call("moveTo", &.{target}, ErrorVal);
+        const result = self.obj.call("moveTo", &.{target}, ErrorVal);
         if (result.toError()) |err| {
             return err;
         }
     }
 
     pub fn harvest(self: *const Self, target: anytype) !void {
-        const result = try self.obj.call("harvest", &.{target}, ErrorVal);
+        const result = self.obj.call("harvest", &.{target}, ErrorVal);
         if (result.toError()) |err| {
             return err;
         }

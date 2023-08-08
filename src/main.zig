@@ -122,7 +122,7 @@ fn run_internal(game: *const Game) !void {
     defer world_state.deinit();
 
     for (world_state.spawns) |spawn| {
-        const name_obj: JSString = try spawn.getName();
+        const name_obj: JSString = spawn.getName();
         const name = try name_obj.getOwnedSlice(allocator);
         defer allocator.free(name);
 
@@ -135,7 +135,7 @@ fn run_internal(game: *const Game) !void {
     }
 
     for (world_state.rooms) |room| {
-        const name_obj: JSString = try room.getName();
+        const name_obj: JSString = room.getName();
         const name = try name_obj.getOwnedSlice(allocator);
         defer allocator.free(name);
 
@@ -143,14 +143,14 @@ fn run_internal(game: *const Game) !void {
     }
 
     for (world_state.creeps) |creep| {
-        const name_obj: JSString = try creep.getName();
+        const name_obj: JSString = creep.getName();
         const name = try name_obj.getOwnedSlice(allocator);
         defer allocator.free(name);
 
         logging.info("creep name: {s}", .{name});
 
-        const sources = try world_state.rooms[0].find(SearchTarget.sources);
-        const source = try sources.get(0);
+        const sources = world_state.rooms[0].find(SearchTarget.sources);
+        const source = sources.get(0);
 
         try creep.moveTo(source);
     }

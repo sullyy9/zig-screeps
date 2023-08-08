@@ -67,19 +67,19 @@ pub const World = struct {
     ///
     pub fn fromGame(allocator: std.mem.Allocator, game: *const Game) !Self {
         const spawns = blk: {
-            const spawns = try game.getSpawns();
+            const spawns = game.getSpawns();
             break :blk try spawns.getOwnedSlice(allocator);
         };
         errdefer allocator.free(spawns);
 
         const creeps = blk: {
-            const creeps = try game.getCreeps();
+            const creeps = game.getCreeps();
             break :blk try creeps.getOwnedSlice(allocator);
         };
         errdefer allocator.free(creeps);
 
         const rooms = blk: {
-            const rooms = try game.getRooms();
+            const rooms = game.getRooms();
             break :blk try rooms.getOwnedSlice(allocator);
         };
         errdefer allocator.free(rooms);
