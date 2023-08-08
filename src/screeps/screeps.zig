@@ -11,6 +11,8 @@ pub const js = @import("js_bind.zig");
 pub const Game = game.Game;
 pub const Spawn = spawn.Spawn;
 pub const Creep = creep.Creep;
+
+pub const Store = misc.Store;
 pub const Effect = misc.Effect;
 
 pub const Room = room.Room;

@@ -20,3 +20,22 @@ const Effect = struct {
         return self.obj.get("ticksRemaining", u32);
     }
 };
+
+const Store = struct {
+    obj: js.Object,
+
+    const Self = @This();
+    pub usingnamespace js.ObjectReference(Self);
+
+    pub fn getCapacity(self: *const Self) !u32 {
+        return self.obj.call("getCapacity", .{}, u32);
+    }
+
+    pub fn getFreeCapacity(self: *const Self) !u32 {
+        return self.obj.call("getFreeCapacity", .{}, u32);
+    }
+
+    pub fn getUsedCapacity(self: *const Self) !u32 {
+        return self.obj.call("getUsedCapacity", .{}, u32);
+    }
+};

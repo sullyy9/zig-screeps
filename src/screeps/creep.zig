@@ -3,9 +3,11 @@ const std = @import("std");
 const js = @import("js_bind.zig");
 
 const room = @import("room.zig");
+const misc = @import("misc.zig");
 const constants = @import("constants.zig");
 
 const RoomObject = room.RoomObject;
+const Store = misc.Store;
 const ErrorVal = constants.ErrorVal;
 
 /// The possible parts a creep can be made up from. In the Screeps API, these are defined as
@@ -44,8 +46,19 @@ pub const Creep = struct {
         return self.obj.get("name", js.String);
     }
 
+    pub fn getStore(self: *const Self) !Store {
+        return self.obj.get("store", Store);
+    }
+
     pub fn moveTo(self: *const Self, target: anytype) !void {
         const result = try self.obj.call("moveTo", &.{target}, ErrorVal);
+        if (result.toError()) |err| {
+            return err;
+        }
+    }
+
+    pub fn harvest(self: *const Self, target: anytype) !void {
+        const result = try self.obj.call("harvest", &.{target}, ErrorVal);
         if (result.toError()) |err| {
             return err;
         }
