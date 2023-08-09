@@ -36,21 +36,20 @@ pub const Creep = struct {
     const Self = @This();
     pub usingnamespace js.ObjectReference(Self);
 
-    /// Description
-    /// -----------
-    /// Return the name of the Creep.
-    ///
-    /// Returns
-    /// -------
-    /// The creeps name.
-    ///
-    pub fn getName(self: *const Self) js.String {
-        return self.obj.get("name", js.String);
-    }
+    pub usingnamespace RoomObject(Self);
 
-    pub fn getStore(self: *const Self) Store {
-        return self.obj.get("store", Store);
-    }
+    pub const getBody = js.ObjectProperty(Self, "body", js.Array(void)); // TODO create Body type.
+    pub const getFatigue = js.ObjectProperty(Self, "fatigue", u32);
+    pub const getHits = js.ObjectProperty(Self, "hits", u32);
+    pub const getHitsMax = js.ObjectProperty(Self, "hitsMax", u32);
+    pub const getID = js.ObjectProperty(Self, "id", js.String);
+    pub const getIsMine = js.ObjectProperty(Self, "my", bool);
+    pub const getName = js.ObjectProperty(Self, "name", js.String);
+    pub const getOwner = js.ObjectProperty(Self, "owner", void); // TODO create Owner type.
+    pub const getSaying = js.ObjectProperty(Self, "saying", js.String);
+    pub const getIsSpawning = js.ObjectProperty(Self, "spawning", bool);
+    pub const getStore = js.ObjectProperty(Self, "store", Store);
+    pub const getTicksToLive = js.ObjectProperty(Self, "ticksToLive", u32);
 
     pub fn moveTo(self: *const Self, target: anytype) !void {
         var result: ErrorVal = undefined;

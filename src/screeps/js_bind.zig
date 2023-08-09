@@ -8,6 +8,8 @@ pub const Value = js.Value;
 pub const Tag = Value.Tag;
 pub const Function = js.Function;
 
+pub const createNumber = js.createNumber;
+
 /// Description
 /// -----------
 /// Defines and checks conformance to the interface required for types to interoperate with this
@@ -232,7 +234,18 @@ pub fn ObjectReference(comptime Self: type) type {
         pub fn asValue(self: *const Self) Value {
             return self.obj.asValue();
         }
+
     };
+}
+
+pub fn ObjectProperty(comptime Self: type, comptime name: []const u8, comptime T: type) fn (*const Self) T {
+    const Closure = struct {
+        pub fn getter(self: *const Self) T {
+            return self.obj.get(name, T);
+        }
+    };
+
+    return Closure.getter;
 }
 
 pub const String = struct {
