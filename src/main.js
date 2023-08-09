@@ -21,7 +21,6 @@ const instance = new WebAssembly.Instance(wasm_module, imports);
 // Initialise bindings. The global object won't exist so add any required global objects manually
 // and pass their references into the main function.
 sysjs.init(instance);
-const game_ref = sysjs.addValue(Game);
 
 // Write global persistant memory into the module.
 const import_memory_address = instance.exports.persistantMemoryAddress();
@@ -37,6 +36,7 @@ module_memory.set(screeps_memory, 0);
 module.exports.loop = function () {
 
     // Run module.
+    const game_ref = sysjs.addValue(Game);
     instance.exports.run(game_ref);
 
     // Overwrite global persistant memory with the module's memory.
