@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 
 const js = @import("js_bind.zig");
 
@@ -52,7 +53,16 @@ pub const Creep = struct {
     }
 
     pub fn moveTo(self: *const Self, target: anytype) !void {
-        const result = self.obj.call("moveTo", &.{target}, ErrorVal);
+        var result: ErrorVal = undefined;
+        if (builtin.mode == std.builtin.Mode.Debug) {
+            const options = js.Object.init();
+            options.set("visualizePathStyle", js.Object.init());
+
+            result = self.obj.call("moveTo", &.{ target, options }, ErrorVal);
+        } else {
+            result = self.obj.call("moveTo", &.{target}, ErrorVal);
+        }
+
         if (result.toError()) |err| {
             return err;
         }

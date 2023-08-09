@@ -93,6 +93,19 @@ pub const Object = struct {
 
     /// Description
     /// -----------
+    /// Return a new Object referencing a newly constructed, empty Javascript object.
+    ///
+    /// Returns
+    /// -------
+    /// New object.
+    ///
+    pub fn init() Self {
+        const global = Self{ .obj = js.global() };
+        return global.call("Object", &.{}, Self);
+    }
+
+    /// Description
+    /// -----------
     /// Return a new Object from a generic value referencing an existing Javascript object.
     ///
     /// Parameters
@@ -141,6 +154,14 @@ pub const Object = struct {
         }
 
         return typeFromValue(T, &value);
+    }
+
+    pub fn set(self: *const Self, property: []const u8, value: anytype) void {
+        if (@TypeOf(value) == Value) {
+            self.obj.set(property, value);
+        } else {
+            self.obj.set(property, value.asValue());
+        }
     }
 
     pub fn getValues(self: *const Self, comptime T: type) Array(T) {
