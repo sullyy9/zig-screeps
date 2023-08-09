@@ -2,12 +2,12 @@ const std = @import("std");
 
 const creep = @import("creep.zig");
 const spawn = @import("spawn.zig");
-const room = @import("room.zig");
+const source = @import("source.zig");
 const js = @import("js_bind.zig");
 
 const Spawn = spawn.Spawn;
 const Creep = creep.Creep;
-const Source = room.Source;
+const Source = source.Source;
 
 pub const ErrorVal = enum(i32) {
     ok = 0,
@@ -196,5 +196,236 @@ pub const SearchTarget = enum(u32) {
             Self.deposits => unreachable,
             Self.ruins => unreachable,
         };
+    }
+};
+
+/// TODO Find a better way to handle this.
+pub const Resource = enum {
+    energy,
+    power,
+    hydrogen,
+    oxygen,
+    utrium,
+    lemergium,
+    keanium,
+    zynthium,
+    catalyst,
+    ghodium,
+    silicon,
+    metal,
+    biomass,
+    mist,
+    hydroxide,
+    zynthium_keanite,
+    utrium_lemergite,
+    utrium_hydride,
+    utrium_oxide,
+    keanium_hydride,
+    keanium_oxide,
+    lemergium_hydride,
+    lemergium_oxide,
+    zynthium_hydride,
+    zynthium_oxide,
+    ghodium_hydride,
+    ghodium_oxide,
+    utrium_acid,
+    utrium_alkalide,
+    keanium_acid,
+    keanium_alkalide,
+    lemergium_acid,
+    lemergium_alkalide,
+    zynthium_acid,
+    zynthium_alkalide,
+    ghodium_acid,
+    ghodium_alkalide,
+    catalyzed_utrium_acid,
+    catalyzed_utrium_alkalide,
+    catalyzed_keanium_acid,
+    catalyzed_keanium_alkalide,
+    catalyzed_lemergium_acid,
+    catalyzed_lemergium_alkalide,
+    catalyzed_zynthium_acid,
+    catalyzed_zynthium_alkalide,
+    catalyzed_ghodium_acid,
+    catalyzed_ghodium_alkalide,
+    ops,
+    utrium_bar,
+    lemergium_bar,
+    zynthium_bar,
+    keanium_bar,
+    ghodium_melt,
+    oxidant,
+    reductant,
+    purifier,
+    battery,
+    composite,
+    crystal,
+    liquid,
+    wire,
+    button,
+    transistor,
+    microchip,
+    circuit,
+    device,
+    cell,
+    phlegm,
+    tissue,
+    muscle,
+    organoid,
+    organism,
+    alloy,
+    tube,
+    fixtures,
+    frame,
+    hydraulics,
+    machine,
+    condensate,
+    concentrate,
+    extract,
+    spirit,
+    emanation,
+    essence,
+
+    const Self = @This();
+    pub const js_tag = js.Value.Tag.num;
+
+    comptime {
+        js.assertIsJSObjectReference(Self);
+    }
+
+    const str_table = [@typeInfo(Self).Enum.fields.len][]const u8{
+        "energy",
+        "power",
+
+        "H",
+        "O",
+        "U",
+        "L",
+        "K",
+        "Z",
+        "X",
+        "G",
+
+        "silicon",
+        "metal",
+        "biomass",
+        "mist",
+
+        "OH",
+        "ZK",
+        "UL",
+
+        "UH",
+        "UO",
+        "KH",
+        "KO",
+        "LH",
+        "LO",
+        "ZH",
+        "ZO",
+        "GH",
+        "GO",
+
+        "UH2O",
+        "UHO2",
+        "KH2O",
+        "KHO2",
+        "LH2O",
+        "LHO2",
+        "ZH2O",
+        "ZHO2",
+        "GH2O",
+        "GHO2",
+
+        "XUH2O",
+        "XUHO2",
+        "XKH2O",
+        "XKHO2",
+        "XLH2O",
+        "XLHO2",
+        "XZH2O",
+        "XZHO2",
+        "XGH2O",
+        "XGHO2",
+
+        "ops",
+
+        "utrium_bar",
+        "lemergium_bar",
+        "zynthium_bar",
+        "keanium_bar",
+        "ghodium_melt",
+        "oxidant",
+        "reductant",
+        "purifier",
+        "battery",
+
+        "composite",
+        "crystal",
+        "liquid",
+
+        "wire",
+        "switch",
+        "transistor",
+        "microchip",
+        "circuit",
+        "device",
+
+        "cell",
+        "phlegm",
+        "tissue",
+        "muscle",
+        "organoid",
+        "organism",
+
+        "alloy",
+        "tube",
+        "fixtures",
+        "frame",
+        "hydraulics",
+        "machine",
+
+        "condensate",
+        "concentrate",
+        "extract",
+        "spirit",
+        "emanation",
+        "essence",
+    };
+
+    /// Description
+    /// -----------
+    /// Return a new Game from a generic value referencing an existing Javascript object.
+    ///
+    /// Parameters
+    /// ----------
+    /// - value: Generic value type.
+    ///
+    /// Returns
+    /// -------
+    /// New Game referencing an existing Javascript object.
+    ///
+    pub fn fromValue(value: *const js.Value) Self {
+        const value_str = js.String.fromValue(value).getOwnedSlice(std.heap.page_allocator);
+        defer std.heap.page_allocator.free(value_str);
+
+        for (Self.str_table) |str, i| {
+            if (std.mem.eql(u8, value_str, str)) {
+                return @intToEnum(Self, i);
+            }
+        }
+        @panic("Failed to convert value to Resource");
+    }
+
+    /// Description
+    /// -----------
+    /// Return a generic Value.
+    ///
+    /// Returns
+    /// -------
+    /// Generic value referencing the Javascript object.
+    ///
+    pub fn asValue(self: Self) js.Value {
+        return js.String.from(Self.str_table[@enumToInt(self)]).asValue();
     }
 };

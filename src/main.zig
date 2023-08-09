@@ -23,6 +23,9 @@ const CreepBlueprint = screeps.CreepBlueprint;
 const CreepPart = screeps.CreepPart;
 
 const SearchTarget = screeps.SearchTarget;
+const Resource = screeps.Resource;
+
+const ScreepsError = screeps.ScreepsError;
 
 extern "sysjs" fn wzLogObject(ref: u64) void;
 extern "sysjs" fn wzLogWrite(str: [*]const u8, len: u32) void;
@@ -149,9 +152,21 @@ fn run_internal(game: *const Game) !void {
 
         logging.info("creep name: {s}", .{name});
 
-        const sources = world_state.rooms[0].find(SearchTarget.sources);
-        const source = sources.get(0);
+        const spawn = world_state.spawns[0];
+        const source = world_state.rooms[0].find(SearchTarget.sources).get(0);
 
-        try creep.moveTo(source);
+        if (creep.getStore().getFreeCapacity() == 0) {
+            creep.transfer(spawn, Resource.energy) catch |err| {
+                switch(err) {
+                    ScreepsError.NotInRange => try creep.moveTo(spawn),
+                    ScreepsError.Full => try creep.drop(Resource.energy),
+                    else => return err,
+                }
+            };
+        } else creep.harvest(source) catch |err| {
+            if (err == ScreepsError.NotInRange) {
+                try creep.moveTo(source);
+            } else return err;
+        };
     }
 }

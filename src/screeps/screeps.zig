@@ -24,5 +24,6 @@ pub const CreepPart = creep.Part;
 pub const CreepBlueprint = creep.Blueprint;
 
 pub const SearchTarget = constants.SearchTarget;
+pub const Resource = constants.Resource;
 
 pub const ScreepsError = constants.ScreepsError;

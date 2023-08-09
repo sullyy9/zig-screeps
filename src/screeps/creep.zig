@@ -8,6 +8,7 @@ const constants = @import("constants.zig");
 
 const RoomObject = room.RoomObject;
 const Store = misc.Store;
+const Resource = constants.Resource;
 const ErrorVal = constants.ErrorVal;
 
 /// The possible parts a creep can be made up from. In the Screeps API, these are defined as
@@ -59,6 +60,34 @@ pub const Creep = struct {
 
     pub fn harvest(self: *const Self, target: anytype) !void {
         const result = self.obj.call("harvest", &.{target}, ErrorVal);
+        if (result.toError()) |err| {
+            return err;
+        }
+    }
+
+    pub fn transfer(self: *const Self, target: anytype, resource: Resource) !void {
+        const result = self.obj.call("transfer", &.{ target, resource }, ErrorVal);
+        if (result.toError()) |err| {
+            return err;
+        }
+    }
+
+    pub fn transferAmmount(self: *const Self, target: anytype, resource: Resource, quantity: u32) !void {
+        const result = self.obj.call("transfer", &.{ target, resource, quantity }, ErrorVal);
+        if (result.toError()) |err| {
+            return err;
+        }
+    }
+
+    pub fn drop(self: *const Self, resource: Resource) !void {
+        const result = self.obj.call("drop", &.{resource}, ErrorVal);
+        if (result.toError()) |err| {
+            return err;
+        }
+    }
+
+    pub fn dropAmmount(self: *const Self, resource: Resource, quantity: u32) !void {
+        const result = self.obj.call("drop", &.{ resource, quantity }, ErrorVal);
         if (result.toError()) |err| {
             return err;
         }
