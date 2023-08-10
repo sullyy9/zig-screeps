@@ -4,12 +4,10 @@ const logging = std.log.scoped(.main);
 const allocator = std.heap.page_allocator;
 
 const screeps = @import("screeps/screeps.zig");
-const js = screeps.js;
+const JSString = screeps.JSString;
 
 const world = @import("world.zig");
 
-const ArrayIterator = js.ArrayIterator;
-const JSString = js.String;
 
 const Game = screeps.Game;
 const Spawn = screeps.Spawn;

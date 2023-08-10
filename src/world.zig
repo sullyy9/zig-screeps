@@ -1,10 +1,6 @@
 const std = @import("std");
 
 const screeps = @import("screeps/screeps.zig");
-
-const Array = screeps.js.Array;
-const ArrayIterator = screeps.js.ArrayIterator;
-
 const Game = screeps.Game;
 const Room = screeps.Room;
 const Spawn = screeps.Spawn;

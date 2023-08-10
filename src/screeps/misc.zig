@@ -1,23 +1,26 @@
 const std = @import("std");
 
-const js = @import("js_bind.zig");
+const jsbind = @import("jsbind.zig");
+const JSObject = jsbind.JSObject;
+const jsObjectProperty = jsbind.jsObjectProperty;
+const JSObjectReference = jsbind.JSObjectReference;
 
 pub const Effect = struct {
-    obj: js.Object,
+    obj: JSObject,
 
     const Self = @This();
-    pub usingnamespace js.ObjectReference(Self);
+    pub usingnamespace JSObjectReference(Self);
 
-    pub const getID = js.ObjectProperty(Self, "effect", u32);
-    pub const getLevel = js.ObjectProperty(Self, "level", u32);
-    pub const getTicksRemaining = js.ObjectProperty(Self, "ticksRemaining", u32);
+    pub const getID = jsObjectProperty(Self, "effect", u32);
+    pub const getLevel = jsObjectProperty(Self, "level", u32);
+    pub const getTicksRemaining = jsObjectProperty(Self, "ticksRemaining", u32);
 };
 
 pub const Store = struct {
-    obj: js.Object,
+    obj: JSObject,
 
     const Self = @This();
-    pub usingnamespace js.ObjectReference(Self);
+    pub usingnamespace JSObjectReference(Self);
 
     pub fn getCapacity(self: *const Self) u32 {
         return self.obj.call("getCapacity", &.{}, u32);

@@ -1,29 +1,33 @@
-const game = @import("game.zig");
-const misc = @import("misc.zig");
-const room = @import("room.zig");
-const creep = @import("creep.zig");
-const spawn = @import("spawn.zig");
-const source = @import("source.zig");
+const jsbind = @import("jsbind.zig");
+pub const JSArray = jsbind.JSArray;
+pub const JSObject = jsbind.JSObject;
+pub const JSString = jsbind.JSString;
+pub const JSArrayIterator = jsbind.JSArrayIterator;
+
 const constants = @import("constants.zig");
-
-pub const js = @import("js_bind.zig");
-
-pub const Game = game.Game;
-pub const Spawn = spawn.Spawn;
-pub const Creep = creep.Creep;
-
-pub const Store = misc.Store;
-pub const Effect = misc.Effect;
-
-pub const Room = room.Room;
-pub const RoomPosition = room.RoomPosition;
-pub const RoomObject = room.RoomObject;
-pub const Source = source.Source;
-
-pub const CreepPart = creep.Part;
-pub const CreepBlueprint = creep.Blueprint;
-
+pub const ScreepsError = constants.ScreepsError;
 pub const SearchTarget = constants.SearchTarget;
 pub const Resource = constants.Resource;
 
-pub const ScreepsError = constants.ScreepsError;
+const game = @import("game.zig");
+pub const Game = game.Game;
+
+const spawn = @import("spawn.zig");
+pub const Spawn = spawn.Spawn;
+
+const creep = @import("creep.zig");
+pub const Creep = creep.Creep;
+pub const CreepPart = creep.Part;
+pub const CreepBlueprint = creep.Blueprint;
+
+const misc = @import("misc.zig");
+pub const Store = misc.Store;
+pub const Effect = misc.Effect;
+
+const room = @import("room.zig");
+pub const Room = room.Room;
+pub const RoomPosition = room.RoomPosition;
+pub const RoomObject = room.RoomObject;
+
+const source = @import("source.zig");
+pub const Source = source.Source;

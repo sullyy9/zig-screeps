@@ -1,7 +1,12 @@
 const std = @import("std");
 const builtin = @import("builtin");
 
-const js = @import("js_bind.zig");
+const jsbind = @import("jsbind.zig");
+const JSArray = jsbind.JSArray;
+const JSObject = jsbind.JSObject;
+const JSString = jsbind.JSString;
+const jsObjectProperty = jsbind.jsObjectProperty;
+const JSObjectReference = jsbind.JSObjectReference;
 
 const room = @import("room.zig");
 const misc = @import("misc.zig");
@@ -31,31 +36,31 @@ pub const Blueprint = struct {
 };
 
 pub const Creep = struct {
-    obj: js.Object,
+    obj: JSObject,
 
     const Self = @This();
-    pub usingnamespace js.ObjectReference(Self);
+    pub usingnamespace JSObjectReference(Self);
 
     pub usingnamespace RoomObject(Self);
 
-    pub const getBody = js.ObjectProperty(Self, "body", js.Array(void)); // TODO create Body type.
-    pub const getFatigue = js.ObjectProperty(Self, "fatigue", u32);
-    pub const getHits = js.ObjectProperty(Self, "hits", u32);
-    pub const getHitsMax = js.ObjectProperty(Self, "hitsMax", u32);
-    pub const getID = js.ObjectProperty(Self, "id", js.String);
-    pub const getIsMine = js.ObjectProperty(Self, "my", bool);
-    pub const getName = js.ObjectProperty(Self, "name", js.String);
-    pub const getOwner = js.ObjectProperty(Self, "owner", void); // TODO create Owner type.
-    pub const getSaying = js.ObjectProperty(Self, "saying", js.String);
-    pub const getIsSpawning = js.ObjectProperty(Self, "spawning", bool);
-    pub const getStore = js.ObjectProperty(Self, "store", Store);
-    pub const getTicksToLive = js.ObjectProperty(Self, "ticksToLive", u32);
+    pub const getBody = jsObjectProperty(Self, "body", JSArray(undefined)); // TODO create Body type.
+    pub const getFatigue = jsObjectProperty(Self, "fatigue", u32);
+    pub const getHits = jsObjectProperty(Self, "hits", u32);
+    pub const getHitsMax = jsObjectProperty(Self, "hitsMax", u32);
+    pub const getID = jsObjectProperty(Self, "id", JSString);
+    pub const getIsMine = jsObjectProperty(Self, "my", bool);
+    pub const getName = jsObjectProperty(Self, "name", JSString);
+    pub const getOwner = jsObjectProperty(Self, "owner", undefined); // TODO create Owner type.
+    pub const getSaying = jsObjectProperty(Self, "saying", JSString);
+    pub const getIsSpawning = jsObjectProperty(Self, "spawning", bool);
+    pub const getStore = jsObjectProperty(Self, "store", Store);
+    pub const getTicksToLive = jsObjectProperty(Self, "ticksToLive", u32);
 
     pub fn moveTo(self: *const Self, target: anytype) !void {
         var result: ErrorVal = undefined;
         if (builtin.mode == std.builtin.Mode.Debug) {
-            const options = js.Object.init();
-            options.set("visualizePathStyle", js.Object.init());
+            const options = JSObject.init();
+            options.set("visualizePathStyle", JSObject.init());
 
             result = self.obj.call("moveTo", &.{ target, options }, ErrorVal);
         } else {

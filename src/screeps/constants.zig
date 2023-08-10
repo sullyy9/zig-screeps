@@ -1,9 +1,14 @@
 const std = @import("std");
 
+const jsbind = @import("jsbind.zig");
+const JSTag = jsbind.JSTag;
+const JSValue = jsbind.JSValue;
+const JSString = jsbind.JSString;
+
 const creep = @import("creep.zig");
 const spawn = @import("spawn.zig");
 const source = @import("source.zig");
-const js = @import("js_bind.zig");
+
 
 const Spawn = spawn.Spawn;
 const Creep = creep.Creep;
@@ -28,10 +33,10 @@ pub const ErrorVal = enum(i32) {
     _,
 
     const Self = @This();
-    pub const js_tag = js.Value.Tag.num;
+    pub const jstag = JSTag.num;
 
     comptime {
-        js.assertIsJSObjectReference(Self);
+        jsbind.assertIsJSObjectReference(Self);
     }
 
     /// Description
@@ -46,7 +51,7 @@ pub const ErrorVal = enum(i32) {
     /// -------
     /// New Game referencing an existing Javascript object.
     ///
-    pub fn fromValue(value: *const js.Value) Self {
+    pub fn fromValue(value: *const JSValue) Self {
         return @intToEnum(Self, @floatToInt(@typeInfo(Self).Enum.tag_type, value.val.num));
     }
 
@@ -58,8 +63,8 @@ pub const ErrorVal = enum(i32) {
     /// -------
     /// Generic value referencing the Javascript object.
     ///
-    pub fn asValue(self: *const Self) js.Value {
-        return js.Value{ .tag = .num, .val = .{ .num = std.math.lossyCast(f64, @enumToInt(self.*)) } };
+    pub fn asValue(self: *const Self) JSValue {
+        return JSValue{ .tag = .num, .val = .{ .num = std.math.lossyCast(f64, @enumToInt(self.*)) } };
     }
 
     pub fn toError(self: ErrorVal) ?ScreepsError {
@@ -131,10 +136,10 @@ pub const SearchTarget = enum(u32) {
     ruins = 123,
 
     const Self = @This();
-    pub const js_tag = js.Value.Tag.num;
+    pub const jstag = JSTag.num;
 
     comptime {
-        js.assertIsJSObjectReference(Self);
+        jsbind.assertIsJSObjectReference(Self);
     }
 
     /// Description
@@ -149,7 +154,7 @@ pub const SearchTarget = enum(u32) {
     /// -------
     /// New Game referencing an existing Javascript object.
     ///
-    pub fn fromValue(value: *const js.Value) Self {
+    pub fn fromValue(value: *const JSValue) Self {
         return @intToEnum(Self, @floatToInt(@typeInfo(Self).Enum.tag_type, value.val.num));
     }
 
@@ -161,8 +166,8 @@ pub const SearchTarget = enum(u32) {
     /// -------
     /// Generic value referencing the Javascript object.
     ///
-    pub fn asValue(self: *const Self) js.Value {
-        return js.Value{ .tag = .num, .val = .{ .num = std.math.lossyCast(f64, @enumToInt(self.*)) } };
+    pub fn asValue(self: *const Self) JSValue {
+        return JSValue{ .tag = .num, .val = .{ .num = std.math.lossyCast(f64, @enumToInt(self.*)) } };
     }
 
     pub fn getType(comptime self: Self) type {
@@ -287,10 +292,10 @@ pub const Resource = enum {
     essence,
 
     const Self = @This();
-    pub const js_tag = js.Value.Tag.num;
+    pub const jstag = JSTag.num;
 
     comptime {
-        js.assertIsJSObjectReference(Self);
+        jsbind.assertIsJSObjectReference(Self);
     }
 
     const str_table = [@typeInfo(Self).Enum.fields.len][]const u8{
@@ -405,8 +410,8 @@ pub const Resource = enum {
     /// -------
     /// New Game referencing an existing Javascript object.
     ///
-    pub fn fromValue(value: *const js.Value) Self {
-        const value_str = js.String.fromValue(value).getOwnedSlice(std.heap.page_allocator);
+    pub fn fromValue(value: *const JSValue) Self {
+        const value_str = JSString.fromValue(value).getOwnedSlice(std.heap.page_allocator);
         defer std.heap.page_allocator.free(value_str);
 
         for (Self.str_table) |str, i| {
@@ -425,7 +430,7 @@ pub const Resource = enum {
     /// -------
     /// Generic value referencing the Javascript object.
     ///
-    pub fn asValue(self: Self) js.Value {
-        return js.String.from(Self.str_table[@enumToInt(self)]).asValue();
+    pub fn asValue(self: Self) JSValue {
+        return JSString.from(Self.str_table[@enumToInt(self)]).asValue();
     }
 };
