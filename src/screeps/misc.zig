@@ -8,17 +8,9 @@ pub const Effect = struct {
     const Self = @This();
     pub usingnamespace js.ObjectReference(Self);
 
-    pub fn getID(self: *const Self) u32 {
-        return self.obj.get("effect", u32);
-    }
-
-    pub fn getLevel(self: *const Self) u32 {
-        return self.obj.get("level", u32);
-    }
-
-    pub fn getTicksRemaining(self: *const Self) u32 {
-        return self.obj.get("ticksRemaining", u32);
-    }
+    pub const getID = js.ObjectProperty(Self, "effect", u32);
+    pub const getLevel = js.ObjectProperty(Self, "level", u32);
+    pub const getTicksRemaining = js.ObjectProperty(Self, "ticksRemaining", u32);
 };
 
 pub const Store = struct {

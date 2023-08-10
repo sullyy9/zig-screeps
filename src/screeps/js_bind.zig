@@ -234,7 +234,6 @@ pub fn ObjectReference(comptime Self: type) type {
         pub fn asValue(self: *const Self) Value {
             return self.obj.asValue();
         }
-
     };
 }
 
