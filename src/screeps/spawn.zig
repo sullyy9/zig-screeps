@@ -28,7 +28,7 @@ pub const Spawn = struct {
     pub fn spawnCreep(self: *const Spawn, blueprint: *const CreepBlueprint) !void {
         const parts = JSArray(JSString).new();
 
-        for (blueprint.parts) |part, i| {
+        for (blueprint.parts, 0..) |part, i| {
             parts.set(i, JSString.from(@tagName(part)));
         }
 

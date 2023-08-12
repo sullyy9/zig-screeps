@@ -9,7 +9,7 @@
             "command": "zig",
             "args": [
                 "build",
-                "-Drelease-small=true"
+                "-Doptimize=ReleaseSmall"
             ],
         },
         {

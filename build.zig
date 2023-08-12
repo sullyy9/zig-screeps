@@ -1,25 +1,21 @@
 const std = @import("std");
+const Build = std.Build;
+const LazyPath = Build.LazyPath;
 
-const sysjs = @import("lib/mach-sysjs/build.zig");
-
-pub fn build(b: *std.build.Builder) void {
-    const lib = b.addSharedLibrary("zig-screeps", "src/main.zig", .unversioned);
+pub fn build(b: *Build) void {
+    const lib = b.addSharedLibrary(.{
+        .name = "zig-screeps",
+        .root_source_file = LazyPath.relative("src/main.zig"),
+        .target = .{ .cpu_arch = .wasm32, .os_tag = .freestanding },
+        .optimize = b.standardOptimizeOption(.{}),
+    });
     lib.rdynamic = true;
 
-    lib.addPackage(sysjs.pkg);
+    const sysjs_mod = b.createModule(.{
+        .source_file = LazyPath.relative("lib/mach-sysjs/src/main.zig"),
+    });
 
-    lib.setTarget(.{ .cpu_arch = .wasm32, .os_tag = .freestanding });
+    lib.addModule("sysjs", sysjs_mod);
 
-    // Standard release options allow the person running `zig build` to select
-    // between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall.
-    const mode = b.standardReleaseOptions();
-    lib.setBuildMode(mode);
-
-    lib.install();
-
-    const main_tests = b.addTest("src/main.zig");
-    main_tests.setBuildMode(mode);
-
-    const test_step = b.step("test", "Run library tests");
-    test_step.dependOn(&main_tests.step);
+    b.installArtifact(lib);
 }

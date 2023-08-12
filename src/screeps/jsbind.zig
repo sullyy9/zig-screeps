@@ -27,7 +27,7 @@ pub fn assertIsJSObjectReference(comptime T: type) void {
     comptime var type_name = @typeName(T);
 
     if (!@hasDecl(T, "jstag")) {
-        @compileError(comptime std.fmt.comptimePrint("Type '{s}' doesn't implement jstag declaration", .{type_name}));
+        @compileError(std.fmt.comptimePrint("Type '{s}' doesn't implement jstag declaration", .{type_name}));
     }
 
     if (!(@TypeOf(T.jstag) == sysjs.Value.Tag)) {
@@ -35,11 +35,11 @@ pub fn assertIsJSObjectReference(comptime T: type) void {
     }
 
     if (!@hasDecl(T, "fromValue")) {
-        @compileError(comptime std.fmt.comptimePrint("Type '{s}' doesn't implement fromValue", .{type_name}));
+        @compileError(std.fmt.comptimePrint("Type '{s}' doesn't implement fromValue", .{type_name}));
     }
 
     if (!@hasDecl(T, "asValue")) {
-        @compileError(comptime std.fmt.comptimePrint("Type '{s}' doesn't implement asValue", .{type_name}));
+        @compileError(std.fmt.comptimePrint("Type '{s}' doesn't implement asValue", .{type_name}));
     }
 }
 
@@ -69,8 +69,8 @@ fn typeFromValue(comptime T: type, value: *const sysjs.Value) T {
         bool => value.view(.bool),
         void => void{},
         else => switch (@typeInfo(T)) {
-            .Int => @floatToInt(T, value.view(.num)), // Should really check this is safe.
-            .Float => @floatCast(T, value.view(.num)),
+            .Int => @intFromFloat(value.view(.num)), // Should really check this is safe.
+            .Float => @floatCast(value.view(.num)),
             .Struct, .Enum => {
                 assertIsJSObjectReference(T);
                 return T.fromValue(value);
@@ -182,7 +182,7 @@ pub const JSObject = struct {
         comptime var return_tag = tagFromType(ReturnType);
 
         var arg_vals: [args.len]sysjs.Value = undefined;
-        inline for (args.*) |arg, i| {
+        inline for (args.*, 0..) |arg, i| {
             if (@TypeOf(arg) == sysjs.Value) {
                 arg_vals[i] = arg;
             } else {
@@ -432,7 +432,7 @@ pub fn JSArray(comptime T: type) type {
             var memory = try allocator.alloc(T, self.len());
             errdefer allocator.free(memory);
 
-            for (memory) |*element, i| {
+            for (memory, 0..) |*element, i| {
                 element.* = self.get(i);
             }
 

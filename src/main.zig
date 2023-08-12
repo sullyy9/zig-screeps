@@ -1,7 +1,7 @@
 const std = @import("std");
 const fmt = std.fmt;
 const logging = std.log.scoped(.main);
-const allocator = std.heap.page_allocator;
+const allocator = std.heap.wasm_allocator;
 
 const screeps = @import("screeps/screeps.zig");
 const JSString = screeps.JSString;
@@ -14,9 +14,8 @@ const Spawn = screeps.Spawn;
 const Creep = screeps.Creep;
 const World = world.World;
 
-pub const Source = screeps.Source;
-pub const RoomObject = screeps.RoomObject;
-
+const Source = screeps.Source;
+const RoomObject = screeps.RoomObject;
 const CreepBlueprint = screeps.CreepBlueprint;
 const CreepPart = screeps.CreepPart;
 
@@ -49,6 +48,10 @@ export fn run(game_ref: u32) void {
 }
 
 //////////////////////////////////////////////////
+
+pub const std_options = struct {
+    pub const logFn = log;
+};
 
 pub fn log(
     comptime message_level: std.log.Level,
@@ -155,7 +158,7 @@ fn run_internal(game: *const Game) !void {
 
         if (creep.getStore().getFreeCapacity() == 0) {
             creep.transfer(spawn, Resource.energy) catch |err| {
-                switch(err) {
+                switch (err) {
                     ScreepsError.NotInRange => try creep.moveTo(spawn),
                     ScreepsError.Full => try creep.drop(Resource.energy),
                     else => return err,

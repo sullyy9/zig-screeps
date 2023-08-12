@@ -1,29 +1,41 @@
 const std = @import("std");
 
-pub fn build(b: *std.build.Builder) void {
-    const mode = b.standardReleaseOptions();
+/// Global instance of this module's builder to be used by functions invoked from other modules.
+var builder_instance: ?*std.Build = null;
+
+pub fn build(b: *std.Build) void {
+    builder_instance = b;
+
+    const optimize = b.standardOptimizeOption(.{});
     const target = b.standardTargetOptions(.{});
+
+    _ = b.addModule("mach-sysjs", .{
+        .source_file = .{ .path = "src/main.zig" },
+    });
+
     const test_step = b.step("test", "Run library tests");
-    test_step.dependOn(&testStep(b, mode, target).step);
+    test_step.dependOn(&testStep(b, optimize, target).step);
 }
 
-pub fn testStep(b: *std.build.Builder, mode: std.builtin.Mode, target: std.zig.CrossTarget) *std.build.RunStep {
-    const main_tests = b.addTestExe("sysjs-tests", sdkPath("/src/main.zig"));
-    main_tests.setBuildMode(mode);
-    main_tests.setTarget(target);
-    return main_tests.run();
+fn testStep(
+    b: *std.Build,
+    optimize: std.builtin.OptimizeMode,
+    target: std.zig.CrossTarget,
+) *std.build.RunStep {
+    const main_tests = b.addTest(.{
+        .name = "sysjs-tests",
+        .root_source_file = .{ .path = "src/main.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+    return b.addRunArtifact(main_tests);
 }
 
-pub const pkg = std.build.Pkg{
-    .name = "sysjs",
-    .source = .{ .path = sdkPath("/src/main.zig") },
-    .dependencies = &[_]std.build.Pkg{},
-};
+/// Returns the path to the JS code file, used for building artifacts.
+///
+/// The returned path is heap-allocated in the builder's arena.
+pub fn getJSPath() []u8 {
+    const b = builder_instance orelse @panic("Builder instance not initialized!");
 
-fn sdkPath(comptime suffix: []const u8) []const u8 {
-    if (suffix[0] != '/') @compileError("suffix must be an absolute path");
-    return comptime blk: {
-        const root_dir = std.fs.path.dirname(@src().file) orelse ".";
-        break :blk root_dir ++ suffix;
-    };
+    return b.pathFromRoot("src/mach-sysjs.js");
 }

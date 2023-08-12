@@ -9,7 +9,6 @@ const creep = @import("creep.zig");
 const spawn = @import("spawn.zig");
 const source = @import("source.zig");
 
-
 const Spawn = spawn.Spawn;
 const Creep = creep.Creep;
 const Source = source.Source;
@@ -52,7 +51,8 @@ pub const ErrorVal = enum(i32) {
     /// New Game referencing an existing Javascript object.
     ///
     pub fn fromValue(value: *const JSValue) Self {
-        return @intToEnum(Self, @floatToInt(@typeInfo(Self).Enum.tag_type, value.val.num));
+        const int = @as(@typeInfo(Self).Enum.tag_type, @intFromFloat(value.val.num));
+        return @enumFromInt(int);
     }
 
     /// Description
@@ -64,7 +64,7 @@ pub const ErrorVal = enum(i32) {
     /// Generic value referencing the Javascript object.
     ///
     pub fn asValue(self: *const Self) JSValue {
-        return JSValue{ .tag = .num, .val = .{ .num = std.math.lossyCast(f64, @enumToInt(self.*)) } };
+        return JSValue{ .tag = .num, .val = .{ .num = std.math.lossyCast(f64, @intFromEnum(self.*)) } };
     }
 
     pub fn toError(self: ErrorVal) ?ScreepsError {
@@ -155,7 +155,8 @@ pub const SearchTarget = enum(u32) {
     /// New Game referencing an existing Javascript object.
     ///
     pub fn fromValue(value: *const JSValue) Self {
-        return @intToEnum(Self, @floatToInt(@typeInfo(Self).Enum.tag_type, value.val.num));
+        const int = @as(@typeInfo(Self).Enum.tag_type, @intFromFloat(value.val.num));
+        return @enumFromInt(int);
     }
 
     /// Description
@@ -167,7 +168,7 @@ pub const SearchTarget = enum(u32) {
     /// Generic value referencing the Javascript object.
     ///
     pub fn asValue(self: *const Self) JSValue {
-        return JSValue{ .tag = .num, .val = .{ .num = std.math.lossyCast(f64, @enumToInt(self.*)) } };
+        return JSValue{ .tag = .num, .val = .{ .num = std.math.lossyCast(f64, @intFromEnum(self.*)) } };
     }
 
     pub fn getType(comptime self: Self) type {
@@ -414,9 +415,9 @@ pub const Resource = enum {
         const value_str = JSString.fromValue(value).getOwnedSlice(std.heap.page_allocator);
         defer std.heap.page_allocator.free(value_str);
 
-        for (Self.str_table) |str, i| {
+        for (Self.str_table, 0..) |str, i| {
             if (std.mem.eql(u8, value_str, str)) {
-                return @intToEnum(Self, i);
+                return @as(Self, @enumFromInt(i));
             }
         }
         @panic("Failed to convert value to Resource");
@@ -431,6 +432,6 @@ pub const Resource = enum {
     /// Generic value referencing the Javascript object.
     ///
     pub fn asValue(self: Self) JSValue {
-        return JSString.from(Self.str_table[@enumToInt(self)]).asValue();
+        return JSString.from(Self.str_table[@intFromEnum(self)]).asValue();
     }
 };
