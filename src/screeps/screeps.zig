@@ -20,14 +20,14 @@ pub const Creep = creep.Creep;
 pub const CreepPart = creep.Part;
 pub const CreepBlueprint = creep.Blueprint;
 
-const misc = @import("misc.zig");
-pub const Store = misc.Store;
-pub const Effect = misc.Effect;
+const object = @import("object.zig");
+pub const Owner = object.Owner;
+pub const Store = object.Store;
+pub const Effect = object.Effect;
 
 const room = @import("room.zig");
 pub const Room = room.Room;
 pub const RoomPosition = room.RoomPosition;
-pub const RoomObject = room.RoomObject;
 
 const source = @import("source.zig");
 pub const Source = source.Source;

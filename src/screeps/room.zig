@@ -8,9 +8,6 @@ const jsObjectProperty = jsbind.jsObjectProperty;
 const JSObjectReference = jsbind.JSObjectReference;
 
 const constants = @import("constants.zig");
-const misc = @import("misc.zig");
-
-const Effect = misc.Effect;
 const SearchTarget = constants.SearchTarget;
 
 pub const Room = struct {
@@ -25,17 +22,6 @@ pub const Room = struct {
         return self.obj.call("find", &.{target}, JSArray(target.getType()));
     }
 };
-
-pub fn RoomObject(comptime Self: type) type {
-    jsbind.assertIsJSObjectReference(Self);
-
-    return struct {
-        pub const getEffects = jsObjectProperty(Self, "effects", JSArray(Effect));
-        pub const getPos = jsObjectProperty(Self, "pos", RoomPosition);
-        pub const getRoom = jsObjectProperty(Self, "room", Room);
-        pub const getID = jsObjectProperty(Self, "id", JSString);
-    };
-}
 
 pub const RoomPosition = struct {
     obj: JSObject,

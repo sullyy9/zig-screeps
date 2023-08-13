@@ -6,16 +6,10 @@ const allocator = std.heap.wasm_allocator;
 const screeps = @import("screeps/screeps.zig");
 const JSString = screeps.JSString;
 
-const world = @import("world.zig");
-
-
 const Game = screeps.Game;
 const Spawn = screeps.Spawn;
 const Creep = screeps.Creep;
-const World = world.World;
-
 const Source = screeps.Source;
-const RoomObject = screeps.RoomObject;
 const CreepBlueprint = screeps.CreepBlueprint;
 const CreepPart = screeps.CreepPart;
 
@@ -23,6 +17,13 @@ const SearchTarget = screeps.SearchTarget;
 const Resource = screeps.Resource;
 
 const ScreepsError = screeps.ScreepsError;
+
+const world = @import("world.zig");
+const World = world.World;
+
+const roomcmd = @import("room_command.zig");
+const RoomObjects = roomcmd.RoomObjects;
+const RoomCommand = roomcmd.RoomCommand;
 
 extern "sysjs" fn wzLogObject(ref: u64) void;
 extern "sysjs" fn wzLogWrite(str: [*]const u8, len: u32) void;
@@ -125,49 +126,33 @@ fn run_internal(game: *const Game) !void {
     const world_state: World = try World.fromGame(allocator, game);
     defer world_state.deinit();
 
-    for (world_state.spawns) |spawn| {
-        const name_obj: JSString = spawn.getName();
-        const name = try name_obj.getOwnedSlice(allocator);
-        defer allocator.free(name);
+    // Create room commanders.
+    const room_commands = blk: {
+        var room_commands = try std.ArrayList(RoomCommand).initCapacity(
+            allocator,
+            world_state.rooms.len,
+        );
+        errdefer room_commands.deinit();
 
-        logging.info("spawn name: {s}", .{name});
+        for (world_state.rooms) |room| {
+            const name_obj: JSString = room.getName();
+            const name = try name_obj.getOwnedSlice(allocator);
+            defer allocator.free(name);
 
-        if (std.mem.eql(u8, name, "Spawn1")) {
-            const creep = CreepBlueprint{ .name = "Harvester", .parts = &[_]CreepPart{ .work, .carry, .move } };
-            spawn.spawnCreep(&creep) catch {};
+            logging.info("room name: {s}", .{name});
+
+    
+            room_commands.appendAssumeCapacity(RoomCommand.init(room, try RoomObjects.fromRoom(allocator, room)));
         }
+
+        break :blk try room_commands.toOwnedSlice();
+    };
+
+    // Run room commanders.
+    for (room_commands) |command| {
+        try command.run();
     }
 
-    for (world_state.rooms) |room| {
-        const name_obj: JSString = room.getName();
-        const name = try name_obj.getOwnedSlice(allocator);
-        defer allocator.free(name);
-
-        logging.info("room name: {s}", .{name});
-    }
-
-    for (world_state.creeps) |creep| {
-        const name_obj: JSString = creep.getName();
-        const name = try name_obj.getOwnedSlice(allocator);
-        defer allocator.free(name);
-
-        logging.info("creep name: {s}", .{name});
-
-        const spawn = world_state.spawns[0];
-        const source = world_state.rooms[0].find(SearchTarget.sources).get(0);
-
-        if (creep.getStore().getFreeCapacity() == 0) {
-            creep.transfer(spawn, Resource.energy) catch |err| {
-                switch (err) {
-                    ScreepsError.NotInRange => try creep.moveTo(spawn),
-                    ScreepsError.Full => try creep.drop(Resource.energy),
-                    else => return err,
-                }
-            };
-        } else creep.harvest(source) catch |err| {
-            if (err == ScreepsError.NotInRange) {
-                try creep.moveTo(source);
-            } else return err;
-        };
-    }
+    logging.info("--------------------", .{});
+    logging.info(" ", .{});
 }

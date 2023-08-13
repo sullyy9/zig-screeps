@@ -5,8 +5,8 @@ const JSString = jsbind.JSString;
 const jsObjectProperty = jsbind.jsObjectProperty;
 const JSObjectReference = jsbind.JSObjectReference;
 
-const room = @import("room.zig");
-const RoomObject = room.RoomObject;
+const object = @import("object.zig");
+const RoomObject = object.RoomObject;
 
 pub const Source = struct {
     obj: JSObject,
