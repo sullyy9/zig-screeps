@@ -14,9 +14,6 @@ const SearchTarget = screeps.SearchTarget;
 const ScreepsError = screeps.ScreepsError;
 const CreepBlueprint = screeps.CreepBlueprint;
 
-const screeps_state = @import("state/state.zig");
-const RoomState = screeps_state.RoomState;
-
 pub const RoomCommanderLoader = struct {
     creeps: []const []const u8,
     spawns: []const []const u8,

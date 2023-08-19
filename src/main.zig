@@ -25,9 +25,6 @@ const World = world.World;
 const roomcmd = @import("room_command.zig");
 const RoomCommander = roomcmd.RoomCommander;
 
-const state = @import("state/state.zig");
-const WorldState = state.WorldState;
-
 const memory = @import("memory.zig");
 const MemoryManager = memory.MemoryManager;
 
