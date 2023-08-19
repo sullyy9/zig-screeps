@@ -17,5 +17,9 @@ pub fn build(b: *Build) void {
 
     lib.addModule("sysjs", sysjs_mod);
 
+    
+    
+    b.installFile("src/main.js", "./lib/main.js");
+    b.installFile("lib/mach-sysjs/src/mach-sysjs.js", "./lib/mach-sysjs.js");
     b.installArtifact(lib);
 }

@@ -31,7 +31,6 @@
                 "rm",
                 "-rf",
                 "${workspaceFolder}/zig-build"
-            
             ],
         },
         {
