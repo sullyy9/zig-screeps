@@ -96,4 +96,8 @@ pub const Game = struct {
         const creeps = self.obj.get("rooms", JSObject);
         return creeps.getValues(Room);
     }
+
+    pub fn getObjectByID(self: *const Self, id: []const u8, comptime T: type) T {
+        return self.obj.call("getObjectById", &.{JSString.from(id)}, T);
+    }
 };

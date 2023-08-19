@@ -1,5 +1,6 @@
 const std = @import("std");
 const fmt = std.fmt;
+const json = std.json;
 const logging = std.log.scoped(.main);
 const allocator = std.heap.wasm_allocator;
 
@@ -22,8 +23,13 @@ const world = @import("world.zig");
 const World = world.World;
 
 const roomcmd = @import("room_command.zig");
-const RoomObjects = roomcmd.RoomObjects;
-const RoomCommand = roomcmd.RoomCommand;
+const RoomCommander = roomcmd.RoomCommander;
+
+const state = @import("state/state.zig");
+const WorldState = state.WorldState;
+
+const memory = @import("memory.zig");
+const MemoryManager = memory.MemoryManager;
 
 extern "sysjs" fn wzLogObject(ref: u64) void;
 extern "sysjs" fn wzLogWrite(str: [*]const u8, len: u32) void;
@@ -119,39 +125,37 @@ fn run_internal(game: *const Game) !void {
     //
     // It's possible for persistant memory to be completely wiped out so loading entirely from the
     // Game needs to be possible.
-    //
-    // Things like creep and structure ID's are good candidates for storing in memory.
-    // Memory format? intended to be JSON but would something like ProtBuf be faster?
+    var room_command = if (MemoryManager.fromSaved(&persistant_memory)) |manager| blk: {
+        logging.info("Persistant memory valid. Loading state from memory...", .{});
 
-    const world_state: World = try World.fromGame(allocator, game);
-    defer world_state.deinit();
-
-    // Create room commanders.
-    const room_commands = blk: {
-        var room_commands = try std.ArrayList(RoomCommand).initCapacity(
+        const loader = try json.parseFromSlice(
+            RoomCommander.Loader,
             allocator,
-            world_state.rooms.len,
+            manager.getMemory(),
+            .{ .ignore_unknown_fields = true },
         );
-        errdefer room_commands.deinit();
 
-        for (world_state.rooms) |room| {
-            const name_obj: JSString = room.getName();
-            const name = try name_obj.getOwnedSlice(allocator);
-            defer allocator.free(name);
+        break :blk try RoomCommander.fromLoader(allocator, &loader.value, game);
+    } else |err| blk: {
+        logging.info(
+            "Persistant memory invalid - {}. Re-initialising state from game object...",
+            .{err},
+        );
 
-            logging.info("room name: {s}", .{name});
-
-    
-            room_commands.appendAssumeCapacity(RoomCommand.init(room, try RoomObjects.fromRoom(allocator, room)));
-        }
-
-        break :blk try room_commands.toOwnedSlice();
+        break :blk try RoomCommander.init(allocator, game.getRooms().get(0));
     };
 
-    // Run room commanders.
-    for (room_commands) |command| {
-        try command.run();
-    }
+    // Run.
+    logging.info("Running commanders...", .{});
+    try room_command.run();
+
+    // Save state for next loop
+    logging.info("Saving state...", .{});
+    var memory_manager = MemoryManager.init(&persistant_memory);
+    defer memory_manager.deinit();
+
+    const loader = try room_command.toLoader(allocator);
+    try json.stringify(loader, .{}, memory_manager.writer());
 
     logging.info("--------------------", .{});
     logging.info(" ", .{});

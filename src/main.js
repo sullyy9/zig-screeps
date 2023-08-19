@@ -30,7 +30,16 @@ RawMemory.setActiveSegments([0]);
 
 var module_memory = new Uint8Array(instance.exports.memory.buffer, import_memory_address, import_memory_length);
 var screeps_memory = new Uint8Array(new TextEncoder().encode(RawMemory.segments[0]), 0, import_memory_length);
-module_memory.set(screeps_memory, 0);
+
+// The persistant memory may sometimes not be ready so don't pass it in if thats the case.
+if(module_memory.length != screeps_memory.length) {
+    console.log("Length mismatch between module and screeps memory:")
+    console.log("Module memory:  ", module_memory.length)
+    console.log("Screeps memory: ", screeps_memory.length)
+    console.log()
+} else {
+    module_memory.set(screeps_memory, 0);
+}
 
 // Main loop.
 module.exports.loop = function () {
@@ -42,5 +51,4 @@ module.exports.loop = function () {
     // Overwrite global persistant memory with the module's memory.
     module_memory = new Uint8Array(instance.exports.memory.buffer, import_memory_address, import_memory_length);
     RawMemory.segments[0] = new TextDecoder().decode(module_memory);
-
 }

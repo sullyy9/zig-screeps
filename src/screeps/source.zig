@@ -14,4 +14,8 @@ pub const Source = struct {
     const Self = @This();
     pub usingnamespace JSObjectReference(Self);
     pub usingnamespace RoomObject(Self);
+
+    pub const getID = jsObjectProperty(Self, "id", JSString);
+    pub const getEnergy = jsObjectProperty(Self, "energy", u32);
+    pub const getEnergyCapacity = jsObjectProperty(Self, "energyCapacity", u32);
 };
