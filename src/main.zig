@@ -5,24 +5,9 @@ const logging = std.log.scoped(.main);
 const allocator = std.heap.wasm_allocator;
 
 const screeps = @import("screeps/screeps.zig");
-const JSString = screeps.JSString;
-
 const Game = screeps.Game;
-const Spawn = screeps.Spawn;
-const Creep = screeps.Creep;
-const Source = screeps.Source;
-const CreepBlueprint = screeps.CreepBlueprint;
-const CreepPart = screeps.CreepPart;
 
-const SearchTarget = screeps.SearchTarget;
-const Resource = screeps.Resource;
-
-const ScreepsError = screeps.ScreepsError;
-
-const world = @import("world.zig");
-const World = world.World;
-
-const roomcmd = @import("room_command.zig");
+const roomcmd = @import("commander/room.zig");
 const RoomCommander = roomcmd.RoomCommander;
 
 const memory = @import("memory.zig");
