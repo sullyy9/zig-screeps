@@ -75,6 +75,13 @@ fn typeFromValue(comptime T: type, value: *const sysjs.Value) T {
                 assertIsJSObjectReference(T);
                 return T.fromValue(value);
             },
+            .Optional => |opt| {
+                if (value.tag == .null) {
+                    return null;
+                }
+
+                return typeFromValue(opt.child, value);
+            },
             else => {
                 @compileLog("Type: ", @typeName(T));
                 @compileError("Invalid type");
@@ -144,13 +151,23 @@ pub const JSObject = struct {
 
     /// Retrieve the value of the given property.
     pub fn get(self: *const Self, property: []const u8, comptime T: type) T {
-        comptime var param_tag = tagFromType(T);
         const value: sysjs.Value = self.obj.get(property);
 
         // If in debug mode check that the property type is as expected.
         if (comptime builtin.mode == .Debug) {
-            if (!value.is(param_tag)) {
-                logging.err("Wrong property type when fetching property '{s}'. Expected '{s}'. Found '{s}'", .{ property, @typeName(T), @tagName(value.tag) });
+            const is_correct_type: bool = switch (@typeInfo(T)) {
+                .Optional => {
+                    comptime var tag = tagFromType(@typeInfo(T).Optional.child);
+                    value.is(tag) or value.is(.null);
+                },
+                else => value.is(comptime tagFromType(T)),
+            };
+
+            if (!is_correct_type) {
+                logging.err(
+                    "Wrong property type when fetching property '{s}'. Expected '{s}'. Found '{s}'",
+                    .{ property, @typeName(T), @tagName(value.tag) },
+                );
                 @panic("Wrong property type");
             }
         }
@@ -179,8 +196,6 @@ pub const JSObject = struct {
 
     /// Call the given method.
     pub fn call(self: *const Self, comptime method: []const u8, args: anytype, comptime ReturnType: type) ReturnType {
-        comptime var return_tag = tagFromType(ReturnType);
-
         var arg_vals: [args.len]sysjs.Value = undefined;
         inline for (args.*, 0..) |arg, i| {
             if (@TypeOf(arg) == sysjs.Value) {
@@ -193,8 +208,19 @@ pub const JSObject = struct {
         const result: sysjs.Value = self.obj.call(method, &arg_vals);
 
         if (comptime builtin.mode == .Debug) {
-            if (!result.is(return_tag)) {
-                logging.err("Wrong return type when calling method '{s}'. Expected '{s}'. Found '{s}'", .{ method, @typeName(ReturnType), @tagName(result.tag) });
+            const is_correct_type: bool = switch (@typeInfo(ReturnType)) {
+                .Optional => blk: {
+                    comptime var tag = tagFromType(@typeInfo(ReturnType).Optional.child);
+                    break :blk result.is(tag) or result.is(.null);
+                },
+                else => result.is(comptime tagFromType(ReturnType)),
+            };
+
+            if (!is_correct_type) {
+                logging.err(
+                    "Wrong return type when calling method '{s}'. Expected '{s}'. Found '{s}'",
+                    .{ method, @typeName(ReturnType), @tagName(result.tag) },
+                );
                 @panic("Wrong return type");
             }
         }
@@ -363,8 +389,19 @@ pub fn JSArray(comptime T: type) type {
 
             // If in debug mode check that the property type is as expected.
             if (comptime builtin.mode == .Debug) {
-                if (!value.is(comptime tagFromType(T))) {
-                    logging.err("Wrong return type when fetching array element '{d}'. Expected '{s}'. Found '{s}'", .{ index, @typeName(T), @tagName(value.tag) });
+                const is_correct_type: bool = switch (@typeInfo(T)) {
+                    .Optional => {
+                        comptime var tag = tagFromType(@typeInfo(T).Optional.child);
+                        value.is(tag) or value.is(.null);
+                    },
+                    else => value.is(comptime tagFromType(T)),
+                };
+
+                if (!is_correct_type) {
+                    logging.err(
+                        "Wrong return type when fetching array element '{d}'. Expected '{s}'. Found '{s}'",
+                        .{ index, @typeName(T), @tagName(value.tag) },
+                    );
                     @panic("Wrong indexed type");
                 }
             }

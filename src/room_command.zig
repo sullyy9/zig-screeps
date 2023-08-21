@@ -144,22 +144,29 @@ pub const RoomCommander = struct {
     }
 
     pub fn fromLoader(allocator: std.mem.Allocator, loader: *const Self.Loader, game: *const Game) !Self {
-        var creeps = try allocator.alloc(Creep, loader.creeps.len);
-        errdefer allocator.free(creeps);
-        for (creeps, loader.creeps) |*creep, id| {
-            creep.* = game.getObjectByID(id, Creep);
+        var creeps = std.ArrayList(Creep).init(allocator);
+        errdefer creeps.deinit();
+
+        for (loader.creeps) |id| {
+            if(game.getObjectByID(id, Creep)) |creep| {
+                try creeps.append(creep);
+            }
+
         }
 
-        var spawns = try allocator.alloc(Spawn, loader.spawns.len);
-        errdefer allocator.free(spawns);
-        for (spawns, loader.spawns) |*spawn, id| {
-            spawn.* = game.getObjectByID(id, Spawn);
+        var spawns = std.ArrayList(Spawn).init(allocator);
+        errdefer spawns.deinit();
+
+        for (loader.spawns) |id| {
+            if(game.getObjectByID(id, Spawn)) |spawn| {
+                try spawns.append(spawn);
+            }
         }
 
         return Self{
-            .room = spawns[0].getRoom(),
-            .creeps = creeps,
-            .spawns = spawns,
+            .room = spawns.items[0].getRoom(),
+            .creeps = try creeps.toOwnedSlice(),
+            .spawns = try spawns.toOwnedSlice(),
             .harvest_command = try HarvestCommander.fromLoader(allocator, &loader.harvest_command, game),
         };
     }
@@ -310,29 +317,39 @@ pub const HarvestCommander = struct {
     }
 
     pub fn fromLoader(allocator: std.mem.Allocator, loader: *const Self.Loader, game: *const Game) !Self {
-        var creeps = try allocator.alloc(Creep, loader.creeps.len);
-        errdefer allocator.free(creeps);
-        for (creeps, loader.creeps) |*creep, id| {
-            creep.* = game.getObjectByID(id, Creep);
+        var creeps = std.ArrayList(Creep).init(allocator);
+        errdefer creeps.deinit();
+
+        for (loader.creeps) |id| {
+            if(game.getObjectByID(id, Creep)) |creep| {
+                try creeps.append(creep);
+            }
+
         }
 
-        var spawns = try allocator.alloc(Spawn, loader.spawns.len);
-        errdefer allocator.free(spawns);
-        for (spawns, loader.spawns) |*spawn, id| {
-            spawn.* = game.getObjectByID(id, Spawn);
+        var spawns = std.ArrayList(Spawn).init(allocator);
+        errdefer spawns.deinit();
+
+        for (loader.spawns) |id| {
+            if(game.getObjectByID(id, Spawn)) |spawn| {
+                try spawns.append(spawn);
+            }
         }
 
-        var sources = try allocator.alloc(Source, loader.sources.len);
-        errdefer allocator.free(sources);
-        for (sources, loader.sources) |*source, id| {
-            source.* = game.getObjectByID(id, Source);
+        var sources = std.ArrayList(Source).init(allocator);
+        errdefer sources.deinit();
+
+        for (loader.sources) |id| {
+            if(game.getObjectByID(id, Source)) |source| {
+                try sources.append(source);
+            }
         }
 
         return Self{
-            .room = spawns[0].getRoom(),
-            .creeps = creeps,
-            .spawns = spawns,
-            .sources = sources,
+            .room = spawns.items[0].getRoom(),
+            .creeps = try creeps.toOwnedSlice(),
+            .spawns = try spawns.toOwnedSlice(),
+            .sources = try sources.toOwnedSlice(),
         };
     }
 

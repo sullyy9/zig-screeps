@@ -97,7 +97,7 @@ pub const Game = struct {
         return creeps.getValues(Room);
     }
 
-    pub fn getObjectByID(self: *const Self, id: []const u8, comptime T: type) T {
-        return self.obj.call("getObjectById", &.{JSString.from(id)}, T);
+    pub fn getObjectByID(self: *const Self, id: []const u8, comptime T: type) ?T {
+        return self.obj.call("getObjectById", &.{JSString.from(id)}, ?T);
     }
 };
