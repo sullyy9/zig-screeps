@@ -2,6 +2,7 @@ const jsbind = @import("jsbind.zig");
 const JSArray = jsbind.JSArray;
 const JSObject = jsbind.JSObject;
 const JSString = jsbind.JSString;
+const jsObjectProperty = jsbind.jsObjectProperty;
 const JSObjectReference = jsbind.JSObjectReference;
 
 const room = @import("room.zig");
@@ -19,6 +20,8 @@ pub const Game = struct {
 
     const Self = @This();
     pub usingnamespace JSObjectReference(Self);
+
+    pub const getTime = jsObjectProperty(Self, "time", u32);
 
     /// Description
     /// -----------

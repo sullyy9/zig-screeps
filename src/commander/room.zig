@@ -93,11 +93,14 @@ pub const RoomCommanderLoader = struct {
 };
 
 pub const RoomCommander = struct {
+    game: Game,
     room: Room,
     creeps: []const Creep,
     spawns: []const Spawn,
 
     harvest_command: HarvestCommander,
+
+    allocator: std.mem.Allocator,
 
     const Self = @This();
     pub const Loader = RoomCommanderLoader;
@@ -107,7 +110,8 @@ pub const RoomCommander = struct {
     /// Deinitialise the room command.
     ///
     pub fn deinit(self: *const Self) void {
-        self.state.deinit();
+        self.allocator.free(self.creeps);
+        self.allocator.free(self.spawns);
     }
 
     /// Description
@@ -124,7 +128,7 @@ pub const RoomCommander = struct {
     /// -------
     /// A new room command.
     ///
-    pub fn init(allocator: std.mem.Allocator, room: Room) !Self {
+    pub fn init(allocator: std.mem.Allocator, game: Game, room: Room) !Self {
         // Get creep.
         const creeps = try room.find(SearchTarget.my_creeps).getOwnedSlice(allocator);
         errdefer allocator.free(creeps);
@@ -138,14 +142,34 @@ pub const RoomCommander = struct {
         errdefer allocator.free(sources);
 
         return Self{
+            .game = game,
             .room = room,
             .creeps = creeps,
             .spawns = spawns,
             .harvest_command = HarvestCommander.init(room, creeps, spawns, sources),
+            .allocator = allocator,
         };
     }
 
-    pub fn fromLoader(allocator: std.mem.Allocator, loader: *const Self.Loader, game: *const Game) !Self {
+    pub fn run(self: *const Self) !void {
+        try self.harvest_command.run();
+
+        if (self.harvest_command.getProposal()) |prop| {
+            switch (prop) {
+                .build_creep => {
+                    const creep_name = try self.createUniqueName();
+                    errdefer self.allocator.free(creep_name);
+
+                    self.spawns[0].spawnCreep(&CreepBlueprint{
+                        .name = creep_name,
+                        .parts = &[_]CreepPart{ .work, .carry, .move },
+                    }) catch {};
+                },
+            }
+        }
+    }
+
+    pub fn fromLoader(allocator: std.mem.Allocator, loader: *const Self.Loader, game: Game) !Self {
         var creeps = std.ArrayList(Creep).init(allocator);
         errdefer creeps.deinit();
 
@@ -165,35 +189,13 @@ pub const RoomCommander = struct {
         }
 
         return Self{
+            .game = game,
             .room = spawns.items[0].getRoom(),
             .creeps = try creeps.toOwnedSlice(),
             .spawns = try spawns.toOwnedSlice(),
-            .harvest_command = try HarvestCommander.fromLoader(allocator, &loader.harvest_command, game),
+            .harvest_command = try HarvestCommander.fromLoader(allocator, &loader.harvest_command, &game),
+            .allocator = allocator,
         };
-    }
-
-    pub fn run(self: *const Self) !void {
-        try self.harvest_command.run();
-
-        if (self.harvest_command.getProposal()) |prop| {
-            switch (prop) {
-                .build_creep => {
-                    var rng = rand.DefaultPrng.init(0);
-
-                    var postfix: [4]u8 = undefined;
-                    for (&postfix) |*byte| {
-                        byte.* = rng.random().intRangeAtMost(u8, 0x30, 0x7E);
-                    }
-
-                    // rng.random().bytes(&postfix);
-
-                    self.spawns[0].spawnCreep(&CreepBlueprint{
-                        .name = "Harv-" ++ postfix,
-                        .parts = &[_]CreepPart{ .work, .carry, .move },
-                    }) catch {};
-                },
-            }
-        }
     }
 
     pub fn toLoader(self: *const Self, allocator: std.mem.Allocator) !Self.Loader {
@@ -217,5 +219,13 @@ pub const RoomCommander = struct {
             .harvest_command = try self.harvest_command.toLoader(allocator),
             .allocator = allocator,
         };
+    }
+
+    fn createUniqueName(self: *const Self) ![]const u8 {
+        const spawn_name = try self.spawns[0].getName().getOwnedSlice(self.allocator);
+        defer self.allocator.free(spawn_name);
+
+        const time = self.game.getTime();
+        return std.fmt.allocPrint(self.allocator, "Harv-{s}-{}", .{ spawn_name, time });
     }
 };

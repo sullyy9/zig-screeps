@@ -11,7 +11,8 @@ const roomcmd = @import("commander/room.zig");
 const RoomCommander = roomcmd.RoomCommander;
 
 const memory = @import("memory.zig");
-const MemoryManager = memory.MemoryManager;
+const MemoryLoader = memory.MemoryLoader;
+const MemoryWriter = memory.MemoryWriter;
 
 extern "sysjs" fn wzLogObject(ref: u64) void;
 extern "sysjs" fn wzLogWrite(str: [*]const u8, len: u32) void;
@@ -31,7 +32,7 @@ export fn persistantMemoryLength() u32 {
 export fn run(game_ref: u32) void {
     const game = Game.fromRef(game_ref);
 
-    run_internal(&game) catch |err| {
+    run_internal(game) catch |err| {
         logging.err("{!}", .{err});
     };
 }
@@ -96,48 +97,52 @@ const Commander = struct {
 
 //////////////////////////////////////////////////
 
-fn run_internal(game: *const Game) !void {
+fn run_internal(game: Game) !void {
     logging.info(" ", .{});
     logging.info("Module start", .{});
     logging.info("--------------------", .{});
 
+    //////////////////////////////////////////////////
     // Load the world state. We can either do this via a combination of:
     // 1. Investigating the Game object (possibly quite slow due to lots of boundry crossing).
     // 2. Using data saved in persistant memory from the previous state (presumably faster???).
     //
     // It's possible for persistant memory to be completely wiped out so loading entirely from the
     // Game needs to be possible.
-    var room_command = if (MemoryManager.fromSaved(&persistant_memory)) |manager| blk: {
-        logging.info("Persistant memory valid. Loading state from memory...", .{});
 
-        const loader = try json.parseFromSlice(
-            RoomCommander.Loader,
-            allocator,
-            manager.getMemory(),
-            .{ .ignore_unknown_fields = true },
-        );
-
-        break :blk try RoomCommander.fromLoader(allocator, &loader.value, game);
-    } else |err| blk: {
-        logging.info(
-            "Persistant memory invalid - {}. Re-initialising state from game object...",
-            .{err},
-        );
-
-        break :blk try RoomCommander.init(allocator, game.getRooms().get(0));
+    const memory_loader = MemoryLoader.init(&persistant_memory) catch |err| blk: {
+        logging.info("Persistant memory invalid - {}", .{err});
+        break :blk null;
     };
 
+    const commander_memory = if (memory_loader) |ldr| ldr.getSection(0) catch |err| blk: {
+        logging.info("Commander generator memory section invalid - {}", .{err});
+        break :blk null;
+    } else null;
+
+    var room_commander = if (commander_memory) |mem| blk: {
+        logging.info("Loading commanders from memory...", .{});
+
+        const loader = try json.parseFromSlice(RoomCommander.Loader, allocator, mem, .{});
+        break :blk try RoomCommander.fromLoader(allocator, &loader.value, game);
+    } else blk: {
+        logging.info("Re-initialising commanders from game API...", .{});
+        break :blk try RoomCommander.init(allocator, game, game.getRooms().get(0));
+    };
+
+    //////////////////////////////////////////////////
     // Run.
     logging.info("Running commanders...", .{});
-    try room_command.run();
+    try room_commander.run();
 
+    //////////////////////////////////////////////////
     // Save state for next loop
     logging.info("Saving state...", .{});
-    var memory_manager = MemoryManager.init(&persistant_memory);
+    var memory_manager = MemoryWriter.init(&persistant_memory);
     defer memory_manager.deinit();
 
-    const loader = try room_command.toLoader(allocator);
-    try json.stringify(loader, .{}, memory_manager.writer());
+    const room_commander_loader = try room_commander.toLoader(allocator);
+    try json.stringify(room_commander_loader, .{}, memory_manager.nextSectionWriter());
 
     logging.info("--------------------", .{});
     logging.info(" ", .{});
