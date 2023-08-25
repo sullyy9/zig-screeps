@@ -1,6 +1,7 @@
 const std = @import("std");
 const json = std.json;
 const rand = std.rand;
+const logging = std.log.scoped(.roomcmd);
 
 const screeps = @import("../screeps/screeps.zig");
 const Game = screeps.Game;
@@ -152,13 +153,14 @@ pub const RoomCommander = struct {
     }
 
     pub fn run(self: *const Self) !void {
-        try self.harvest_command.run();
+        logging.info("Running - Creeps: {}", .{self.creeps.len});
+        try self.harvest_command.run(self.creeps);
 
         if (self.harvest_command.getProposal()) |prop| {
             switch (prop) {
                 .build_creep => {
                     const creep_name = try self.createUniqueName();
-                    errdefer self.allocator.free(creep_name);
+                    defer self.allocator.free(creep_name);
 
                     self.spawns[0].spawnCreep(&CreepBlueprint{
                         .name = creep_name,
@@ -204,6 +206,18 @@ pub const RoomCommander = struct {
 
         for (self.creeps) |creep| {
             creep_ids.appendAssumeCapacity(try creep.getID().getOwnedSlice(allocator));
+        }
+
+        // Add any creeps that are about to spawn.
+        if (self.spawns[0].getSpawning()) |spawning| {
+            if (spawning.getRemainingTime() == 1) {
+                const name = try spawning.getName().getOwnedSlice(self.allocator);
+                defer self.allocator.free(name);
+
+                const id = try self.game.getCreepByName(name).getID().getOwnedSlice(self.allocator);
+                logging.info("New creep with id: {s}", .{id});
+                try creep_ids.append(id);
+            }
         }
 
         var spawn_ids = try std.ArrayList([]const u8).initCapacity(allocator, self.spawns.len);

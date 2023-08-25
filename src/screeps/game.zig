@@ -100,6 +100,11 @@ pub const Game = struct {
         return creeps.getValues(Room);
     }
 
+    pub fn getCreepByName(self: *const Self, name: []const u8) Creep {
+        const creeps = self.obj.get("creeps", JSObject);
+        return creeps.get(name, Creep); // Should check it exists first.
+    }
+
     pub fn getObjectByID(self: *const Self, id: []const u8, comptime T: type) ?T {
         return self.obj.call("getObjectById", &.{JSString.from(id)}, ?T);
     }

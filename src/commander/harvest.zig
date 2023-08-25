@@ -144,11 +144,11 @@ pub const HarvestCommander = struct {
         };
     }
 
-    pub fn run(self: *const Self) !void {
+    pub fn run(self: *const Self, creeps: []const Creep) !void {
         const source = self.room.find(SearchTarget.sources).get(0);
         const spawn = self.spawns[0];
 
-        for (self.creeps) |creep| {
+        for (creeps) |creep| {
             if (creep.getStore().getFreeCapacity() == 0) {
                 creep.transfer(spawn, Resource.energy) catch |err| switch (err) {
                     ScreepsError.NotInRange => creep.moveTo(spawn) catch |err2| switch (err2) {
