@@ -33,7 +33,7 @@ pub const Spawn = struct {
     pub const getName = jsObjectProperty(Self, "name", JSString);
     pub const getID = jsObjectProperty(Self, "id", JSString);
     pub const getStore = jsObjectProperty(Self, "store", Store);
-    // pub const getSpawning = jsObjectProperty(Self, "spawning", bool);
+    pub const getSpawning = jsObjectProperty(Self, "spawning", ?Spawning);
 
     /// Spawn a new creep.
     ///
@@ -45,6 +45,24 @@ pub const Spawn = struct {
         }
 
         const result = self.obj.call("spawnCreep", &.{ parts, JSString.from(blueprint.name) }, ErrorVal);
+        if (result.toError()) |err| {
+            return err;
+        }
+    }
+};
+
+pub const Spawning = struct {
+    obj: JSObject,
+
+    const Self = @This();
+    pub usingnamespace JSObjectReference(Self);
+
+    pub const getName = jsObjectProperty(Self, "name", JSString);
+    pub const getSpawn = jsObjectProperty(Self, "spawn", Spawn);
+    pub const getRemainingTime = jsObjectProperty(Self, "remainingTime", u32);
+
+    pub fn cancel(self: *const Self) !void {
+        const result = self.obj.call("cancel", &.{}, ErrorVal);
         if (result.toError()) |err| {
             return err;
         }
