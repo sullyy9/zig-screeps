@@ -156,9 +156,9 @@ pub const JSObject = struct {
         // If in debug mode check that the property type is as expected.
         if (comptime builtin.mode == .Debug) {
             const is_correct_type: bool = switch (@typeInfo(T)) {
-                .Optional => {
+                .Optional => blk: {
                     comptime var tag = tagFromType(@typeInfo(T).Optional.child);
-                    value.is(tag) or value.is(.null);
+                    break :blk value.is(tag) or value.is(.null);
                 },
                 else => value.is(comptime tagFromType(T)),
             };
@@ -390,9 +390,9 @@ pub fn JSArray(comptime T: type) type {
             // If in debug mode check that the property type is as expected.
             if (comptime builtin.mode == .Debug) {
                 const is_correct_type: bool = switch (@typeInfo(T)) {
-                    .Optional => {
+                    .Optional => blk: {
                         comptime var tag = tagFromType(@typeInfo(T).Optional.child);
-                        value.is(tag) or value.is(.null);
+                        break :blk value.is(tag) or value.is(.null);
                     },
                     else => value.is(comptime tagFromType(T)),
                 };
