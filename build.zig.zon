@@ -11,5 +11,9 @@
         .screeps_bindings = .{
             .path = "screeps-bindings",
         },
+
+        .screeps_ecs = .{
+            .path = "screeps-ecs",
+        },
     },
 }

@@ -9,7 +9,7 @@
             "command": "zig",
             "args": [
                 "build",
-                "-Doptimize=ReleaseSmall"
+                "-Doptimize=ReleaseSafe"
             ],
         },
         {
@@ -57,6 +57,28 @@
             "command": "npm",
             "args": [
                 "install"
+            ],
+        },
+        {
+            "label": "Test All",
+            "type": "shell",
+            "command": "zig",
+            "args": [
+                "build",
+                "test-all",
+                "--summary",
+                "all"
+            ],
+        },
+        {
+            "label": "Test ECS",
+            "type": "shell",
+            "command": "zig",
+            "args": [
+                "build",
+                "test-ecs",
+                "--summary",
+                "all"
             ],
         },
     ]
