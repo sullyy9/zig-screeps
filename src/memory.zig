@@ -18,16 +18,16 @@ const MemoryInfo = struct {
     const byte_len = 7;
 
     fn toBytes(self: *const Self, buffer: []u8) void {
-        std.mem.writeInt(u8, buffer[0..1], self.id, .Little);
-        std.mem.writeInt(u24, buffer[1..4], self.offset, .Little);
-        std.mem.writeInt(u24, buffer[4..7], self.len, .Little);
+        std.mem.writeInt(u8, buffer[0..1], self.id, .little);
+        std.mem.writeInt(u24, buffer[1..4], self.offset, .little);
+        std.mem.writeInt(u24, buffer[4..7], self.len, .little);
     }
 
     fn fromBytes(bytes: []const u8) Self {
         return Self{
-            .id = std.mem.readInt(u8, bytes[0..1], .Little),
-            .offset = std.mem.readInt(u24, bytes[1..4], .Little),
-            .len = std.mem.readInt(u24, bytes[4..7], .Little),
+            .id = std.mem.readInt(u8, bytes[0..1], .little),
+            .offset = std.mem.readInt(u24, bytes[1..4], .little),
+            .len = std.mem.readInt(u24, bytes[4..7], .little),
         };
     }
 };

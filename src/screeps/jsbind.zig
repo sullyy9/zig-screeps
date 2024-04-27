@@ -24,7 +24,7 @@ pub const createNumber = sysjs.createNumber;
 /// True if the type conforms, false otherwise.
 ///
 pub fn assertIsJSObjectReference(comptime T: type) void {
-    comptime var type_name = @typeName(T);
+    const type_name = @typeName(T);
 
     if (!@hasDecl(T, "jstag")) {
         @compileError(std.fmt.comptimePrint("Type '{s}' doesn't implement jstag declaration", .{type_name}));
@@ -157,7 +157,7 @@ pub const JSObject = struct {
         if (comptime builtin.mode == .Debug) {
             const is_correct_type: bool = switch (@typeInfo(T)) {
                 .Optional => blk: {
-                    comptime var tag = tagFromType(@typeInfo(T).Optional.child);
+                    const tag = comptime tagFromType(@typeInfo(T).Optional.child);
                     break :blk value.is(tag) or value.is(.null);
                 },
                 else => value.is(comptime tagFromType(T)),
@@ -197,7 +197,7 @@ pub const JSObject = struct {
     /// Call the given method.
     pub fn call(self: *const Self, comptime method: []const u8, args: anytype, comptime ReturnType: type) ReturnType {
         var arg_vals: [args.len]sysjs.Value = undefined;
-        inline for (args.*, 0..) |arg, i| {
+        inline for (args, 0..) |arg, i| {
             if (@TypeOf(arg) == sysjs.Value) {
                 arg_vals[i] = arg;
             } else {
@@ -210,7 +210,7 @@ pub const JSObject = struct {
         if (comptime builtin.mode == .Debug) {
             const is_correct_type: bool = switch (@typeInfo(ReturnType)) {
                 .Optional => blk: {
-                    comptime var tag = tagFromType(@typeInfo(ReturnType).Optional.child);
+                    const tag = comptime tagFromType(@typeInfo(ReturnType).Optional.child);
                     break :blk result.is(tag) or result.is(.null);
                 },
                 else => result.is(comptime tagFromType(ReturnType)),
@@ -391,7 +391,7 @@ pub fn JSArray(comptime T: type) type {
             if (comptime builtin.mode == .Debug) {
                 const is_correct_type: bool = switch (@typeInfo(T)) {
                     .Optional => blk: {
-                        comptime var tag = tagFromType(@typeInfo(T).Optional.child);
+                        const tag = tagFromType(@typeInfo(T).Optional.child);
                         break :blk value.is(tag) or value.is(.null);
                     },
                     else => value.is(comptime tagFromType(T)),
@@ -466,7 +466,7 @@ pub fn JSArray(comptime T: type) type {
         }
 
         pub fn getOwnedSlice(self: *const Self, allocator: std.mem.Allocator) ![]T {
-            var memory = try allocator.alloc(T, self.len());
+            const memory = try allocator.alloc(T, self.len());
             errdefer allocator.free(memory);
 
             for (memory, 0..) |*element, i| {

@@ -1,25 +1,28 @@
 const std = @import("std");
 const Build = std.Build;
-const LazyPath = Build.LazyPath;
+const CrossTarget = std.zig.CrossTarget;
 
 pub fn build(b: *Build) void {
-    const lib = b.addSharedLibrary(.{
+    const target = b.resolveTargetQuery(CrossTarget{ .cpu_arch = .wasm32, .os_tag = .freestanding });
+    const optimize = b.standardOptimizeOption(.{});
+
+    const exe = b.addExecutable(.{
         .name = "zig-screeps",
-        .root_source_file = LazyPath.relative("src/main.zig"),
-        .target = .{ .cpu_arch = .wasm32, .os_tag = .freestanding },
-        .optimize = b.standardOptimizeOption(.{}),
+        .root_source_file = b.path("src/main.zig"),
+        .target = target,
+        .optimize = optimize,
     });
-    lib.rdynamic = true;
+    exe.entry = .disabled;
+    exe.rdynamic = true;
 
     const sysjs_mod = b.createModule(.{
-        .source_file = LazyPath.relative("lib/mach-sysjs/src/main.zig"),
+        .root_source_file = b.path("lib/mach-sysjs/src/main.zig"),
     });
 
-    lib.addModule("sysjs", sysjs_mod);
+    exe.root_module.addImport("sysjs", sysjs_mod);
 
-    
-    
     b.installFile("src/main.js", "./lib/main.js");
     b.installFile("lib/mach-sysjs/src/mach-sysjs.js", "./lib/mach-sysjs.js");
-    b.installArtifact(lib);
+
+    b.installArtifact(exe);
 }

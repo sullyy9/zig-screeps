@@ -39,8 +39,8 @@ export fn run(game_ref: u32) void {
 
 //////////////////////////////////////////////////
 
-pub const std_options = struct {
-    pub const logFn = log;
+pub const std_options = std.Options {
+    .logFn = log,
 };
 
 pub fn log(

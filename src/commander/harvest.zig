@@ -56,7 +56,7 @@ pub const HarvestCommanderLoader = struct {
         };
 
         while (true) {
-            var name_token: ?json.Token = try source.nextAllocMax(
+            const name_token: ?json.Token = try source.nextAllocMax(
                 allocator,
                 .alloc_if_needed,
                 options.max_value_len.?,
