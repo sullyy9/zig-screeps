@@ -4,7 +4,7 @@ const json = std.json;
 const logging = std.log.scoped(.main);
 const allocator = std.heap.wasm_allocator;
 
-const screeps = @import("screeps/screeps.zig");
+const screeps = @import("screeps-bindings");
 const Game = screeps.Game;
 
 const roomcmd = @import("commander/room.zig");

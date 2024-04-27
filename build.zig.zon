@@ -1,0 +1,15 @@
+.{
+    .name = "screeps",
+    .version = "0.1.0",
+    .paths = .{""},
+
+    .dependencies = .{
+        .screeps_ai = .{
+            .path = "screeps-ai",
+        },
+
+        .screeps_bindings = .{
+            .path = "screeps-bindings",
+        },
+    },
+}

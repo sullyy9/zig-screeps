@@ -1,3 +1,5 @@
+// JS object storage heap. Shamelessly stolen from mach-sysjs.
+
 let text_decoder = new TextDecoder();
 let text_encoder = new TextEncoder();
 let log_buf = "";

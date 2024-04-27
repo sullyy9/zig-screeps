@@ -3,7 +3,7 @@ const json = std.json;
 const rand = std.rand;
 const logging = std.log.scoped(.roomcmd);
 
-const screeps = @import("../screeps/screeps.zig");
+const screeps = @import("screeps-bindings");
 const Game = screeps.Game;
 const Room = screeps.Room;
 const Spawn = screeps.Spawn;

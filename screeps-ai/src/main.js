@@ -1,7 +1,7 @@
-const sysjs = require('mach-sysjs').sysjs;
+const sysjs = require('heap').sysjs;
 
 // Load the WASM module.
-const bytecode = require('zig-screeps');
+const bytecode = require('screeps-ai');
 const wasm_module = new WebAssembly.Module(bytecode);
 
 // Define imports into WASM module.

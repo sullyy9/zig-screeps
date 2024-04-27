@@ -2,13 +2,13 @@ const std = @import("std");
 const logging = std.log.scoped(.main);
 const builtin = @import("builtin");
 
-const sysjs = @import("sysjs");
+const js = @import("heap.zig");
 
-pub const JSTag = sysjs.Value.Tag;
-pub const JSValue = sysjs.Value;
-pub const JSFunction = sysjs.Function;
+pub const JSTag = js.Value.Tag;
+pub const JSValue = js.Value;
+pub const JSFunction = js.Function;
 
-pub const createNumber = sysjs.createNumber;
+pub const createNumber = js.createNumber;
 
 /// Description
 /// -----------
@@ -30,7 +30,7 @@ pub fn assertIsJSObjectReference(comptime T: type) void {
         @compileError(std.fmt.comptimePrint("Type '{s}' doesn't implement jstag declaration", .{type_name}));
     }
 
-    if (!(@TypeOf(T.jstag) == sysjs.Value.Tag)) {
+    if (!(@TypeOf(T.jstag) == js.Value.Tag)) {
         @compileError(std.fmt.comptimePrint("Type '{s}' implements jstag declaration but declaration is wrong type", .{@typeName(T)}));
     }
 
@@ -43,7 +43,7 @@ pub fn assertIsJSObjectReference(comptime T: type) void {
     }
 }
 
-fn tagFromType(comptime T: type) sysjs.Value.Tag {
+fn tagFromType(comptime T: type) js.Value.Tag {
     return switch (T) {
         JSFunction => .func,
         bool => .bool,
@@ -62,10 +62,10 @@ fn tagFromType(comptime T: type) sysjs.Value.Tag {
     };
 }
 
-fn typeFromValue(comptime T: type, value: *const sysjs.Value) T {
+fn typeFromValue(comptime T: type, value: *const js.Value) T {
     return switch (comptime T) {
         JSFunction => value.view(.func),
-        sysjs.Value => value,
+        js.Value => value,
         bool => value.view(.bool),
         void => void{},
         else => switch (@typeInfo(T)) {
@@ -91,10 +91,10 @@ fn typeFromValue(comptime T: type, value: *const sysjs.Value) T {
 }
 
 pub const JSObject = struct {
-    obj: sysjs.Object,
+    obj: js.Object,
 
     const Self = @This();
-    const jstag = sysjs.Value.Tag.object;
+    const jstag = js.Value.Tag.object;
 
     comptime {
         assertIsJSObjectReference(Self);
@@ -109,7 +109,7 @@ pub const JSObject = struct {
     /// New object.
     ///
     pub fn init() Self {
-        const global = Self{ .obj = sysjs.global() };
+        const global = Self{ .obj = js.global() };
         return global.call("Object", &.{}, Self);
     }
 
@@ -121,7 +121,7 @@ pub const JSObject = struct {
     /// ----------
     /// - value: Generic value type.
     ///
-    pub fn fromValue(value: *const sysjs.Value) Self {
+    pub fn fromValue(value: *const js.Value) Self {
         return Self{ .obj = value.view(.object) };
     }
 
@@ -133,8 +133,8 @@ pub const JSObject = struct {
     /// -------
     /// Generic value referencing the Javascript object.
     ///
-    pub fn asValue(self: *const Self) sysjs.Value {
-        return sysjs.Value{ .tag = .object, .val = .{ .ref = self.obj.ref } };
+    pub fn asValue(self: *const Self) js.Value {
+        return js.Value{ .tag = .object, .val = .{ .ref = self.obj.ref } };
     }
 
     /// Description
@@ -146,12 +146,12 @@ pub const JSObject = struct {
     /// - ref: Reference of the javascript object.
     ///
     pub fn fromRef(ref: u64) Self {
-        return Self{ .obj = sysjs.Object{ .ref = ref } };
+        return Self{ .obj = js.Object{ .ref = ref } };
     }
 
     /// Retrieve the value of the given property.
     pub fn get(self: *const Self, property: []const u8, comptime T: type) T {
-        const value: sysjs.Value = self.obj.get(property);
+        const value: js.Value = self.obj.get(property);
 
         // If in debug mode check that the property type is as expected.
         if (comptime builtin.mode == .Debug) {
@@ -176,7 +176,7 @@ pub const JSObject = struct {
     }
 
     pub fn set(self: *const Self, property: []const u8, value: anytype) void {
-        if (@TypeOf(value) == sysjs.Value) {
+        if (@TypeOf(value) == js.Value) {
             self.obj.set(property, value);
         } else {
             self.obj.set(property, value.asValue());
@@ -184,28 +184,28 @@ pub const JSObject = struct {
     }
 
     pub fn getValues(self: *const Self, comptime T: type) JSArray(T) {
-        const global = Self{ .obj = sysjs.global() };
+        const global = Self{ .obj = js.global() };
 
         // Mach-sysjs picks this up as a function but it's really a type.
         // Need manually convert it to an object.
         const object_func = global.get("Object", JSFunction);
-        const object_type = Self{ .obj = sysjs.Object{ .ref = object_func.ref } };
+        const object_type = Self{ .obj = js.Object{ .ref = object_func.ref } };
 
         return object_type.call("values", &.{self}, JSArray(T));
     }
 
     /// Call the given method.
     pub fn call(self: *const Self, comptime method: []const u8, args: anytype, comptime ReturnType: type) ReturnType {
-        var arg_vals: [args.len]sysjs.Value = undefined;
+        var arg_vals: [args.len]js.Value = undefined;
         inline for (args, 0..) |arg, i| {
-            if (@TypeOf(arg) == sysjs.Value) {
+            if (@TypeOf(arg) == js.Value) {
                 arg_vals[i] = arg;
             } else {
                 arg_vals[i] = arg.asValue();
             }
         }
 
-        const result: sysjs.Value = self.obj.call(method, &arg_vals);
+        const result: js.Value = self.obj.call(method, &arg_vals);
 
         if (comptime builtin.mode == .Debug) {
             const is_correct_type: bool = switch (@typeInfo(ReturnType)) {
@@ -231,7 +231,7 @@ pub const JSObject = struct {
 
 pub fn JSObjectReference(comptime Self: type) type {
     return struct {
-        pub const jstag = sysjs.Value.Tag.object;
+        pub const jstag = js.Value.Tag.object;
 
         /// Description
         /// -----------
@@ -245,7 +245,7 @@ pub fn JSObjectReference(comptime Self: type) type {
         /// -------
         /// New Source referencing an existing Javascript object.
         ///
-        pub fn fromValue(value: *const sysjs.Value) Self {
+        pub fn fromValue(value: *const js.Value) Self {
             return Self{ .obj = JSObject.fromValue(value) };
         }
 
@@ -257,7 +257,7 @@ pub fn JSObjectReference(comptime Self: type) type {
         /// -------
         /// Generic value referencing the Javascript object.
         ///
-        pub fn asValue(self: *const Self) sysjs.Value {
+        pub fn asValue(self: *const Self) js.Value {
             return self.obj.asValue();
         }
     };
@@ -274,10 +274,10 @@ pub fn jsObjectProperty(comptime Self: type, comptime name: []const u8, comptime
 }
 
 pub const JSString = struct {
-    str: sysjs.String,
+    str: js.String,
 
     const Self = @This();
-    const jstag = sysjs.Value.Tag.str;
+    const jstag = js.Value.Tag.str;
 
     comptime {
         assertIsJSObjectReference(Self);
@@ -285,7 +285,7 @@ pub const JSString = struct {
 
     pub fn from(str: []const u8) Self {
         return Self{
-            .str = sysjs.createString(str),
+            .str = js.createString(str),
         };
     }
 
@@ -297,7 +297,7 @@ pub const JSString = struct {
     /// ----------
     /// - value: Generic value type.
     ///
-    pub fn fromValue(value: *const sysjs.Value) Self {
+    pub fn fromValue(value: *const js.Value) Self {
         return Self{ .str = value.view(.str) };
     }
 
@@ -309,8 +309,8 @@ pub const JSString = struct {
     /// -------
     /// Generic value referencing the Javascript object.
     ///
-    pub fn asValue(self: *const Self) sysjs.Value {
-        return sysjs.Value{ .tag = .str, .val = .{ .ref = self.str.ref } };
+    pub fn asValue(self: *const Self) js.Value {
+        return js.Value{ .tag = .str, .val = .{ .ref = self.str.ref } };
     }
 
     pub fn length(self: *const Self) usize {
@@ -328,10 +328,10 @@ pub const JSString = struct {
 ///
 pub fn JSArray(comptime T: type) type {
     return struct {
-        obj: sysjs.Object,
+        obj: js.Object,
 
         const Self = @This();
-        const jstag = sysjs.Value.Tag.object;
+        const jstag = js.Value.Tag.object;
 
         comptime {
             assertIsJSObjectReference(Self);
@@ -343,7 +343,7 @@ pub fn JSArray(comptime T: type) type {
         ///
         pub fn new() Self {
             return Self{
-                .obj = sysjs.createArray(),
+                .obj = js.createArray(),
             };
         }
 
@@ -356,7 +356,7 @@ pub fn JSArray(comptime T: type) type {
         /// ----------
         /// - value: Generic value type.
         ///
-        pub fn fromValue(value: *const sysjs.Value) Self {
+        pub fn fromValue(value: *const js.Value) Self {
             return Self{ .obj = value.view(.object) };
         }
 
@@ -368,8 +368,8 @@ pub fn JSArray(comptime T: type) type {
         /// -------
         /// Generic value referencing the Javascript object.
         ///
-        pub fn asValue(self: *const Self) sysjs.Value {
-            return sysjs.Value{ .tag = .object, .val = .{ .ref = self.obj.ref } };
+        pub fn asValue(self: *const Self) js.Value {
+            return js.Value{ .tag = .object, .val = .{ .ref = self.obj.ref } };
         }
 
         /// Description
@@ -385,7 +385,7 @@ pub fn JSArray(comptime T: type) type {
         /// The item or BindingError.WrongIndexedType.
         ///
         pub fn get(self: *const Self, index: u32) T {
-            const value: sysjs.Value = self.obj.getIndex(index);
+            const value: js.Value = self.obj.getIndex(index);
 
             // If in debug mode check that the property type is as expected.
             if (comptime builtin.mode == .Debug) {
@@ -419,7 +419,7 @@ pub fn JSArray(comptime T: type) type {
         /// - value: Value of the item.
         ///
         pub fn set(self: *const Self, index: u32, value: T) void {
-            if (T == sysjs.Value) {
+            if (T == js.Value) {
                 self.obj.setIndex(index, value);
             } else {
                 self.obj.setIndex(index, value.asValue());

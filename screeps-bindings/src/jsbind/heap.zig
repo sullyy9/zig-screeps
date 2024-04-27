@@ -1,3 +1,5 @@
+// Zig side of the JS object storage heap. Shamelessly stolen from mach-sysjs.
+
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 const builtin = @import("builtin");

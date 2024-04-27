@@ -11,7 +11,7 @@ module.exports = function (grunt) {
                 //server: 'season'
             },
             dist: {
-                src: ['./zig-out/lib/main.js', './zig-out/lib/mach-sysjs.js', './zig-out/lib/zig-screeps.wasm']
+                src: ['./zig-out/bin/main.js', './zig-out/bin/heap.js', './zig-out/bin/screeps-ai.wasm']
             }
         }
     });

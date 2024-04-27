@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const jsbind = @import("jsbind.zig");
+const jsbind = @import("../jsbind/jsbind.zig");
 const JSArray = jsbind.JSArray;
 const JSObject = jsbind.JSObject;
 const JSString = jsbind.JSString;

@@ -1,28 +1,31 @@
 const std = @import("std");
 const Build = std.Build;
 const CrossTarget = std.zig.CrossTarget;
+const LazyPath = Build.LazyPath;
 
-pub fn build(b: *Build) void {
+const ai = @import("screeps_ai");
+const bindings = @import("screeps_bindings");
+
+pub fn build(b: *Build) !void {
     const target = b.resolveTargetQuery(CrossTarget{ .cpu_arch = .wasm32, .os_tag = .freestanding });
     const optimize = b.standardOptimizeOption(.{});
 
-    const exe = b.addExecutable(.{
-        .name = "zig-screeps",
-        .root_source_file = b.path("src/main.zig"),
+    const screeps_ai = b.dependency("screeps_ai", .{
         .target = target,
         .optimize = optimize,
     });
-    exe.entry = .disabled;
-    exe.rdynamic = true;
 
-    const sysjs_mod = b.createModule(.{
-        .root_source_file = b.path("lib/mach-sysjs/src/main.zig"),
-    });
+    b.installArtifact(screeps_ai.artifact("screeps-ai"));
 
-    exe.root_module.addImport("sysjs", sysjs_mod);
+    // Convert absolute paths to relative.
+    const js_main_path_size = std.mem.replacementSize(u8, ai.getJSMain(), b.pathFromRoot("."), ".");
+    const js_main_path = try b.allocator.alloc(u8, js_main_path_size);
+    _ = std.mem.replace(u8, ai.getJSMain(), b.pathFromRoot("."), ".", js_main_path);
 
-    b.installFile("src/main.js", "./lib/main.js");
-    b.installFile("lib/mach-sysjs/src/mach-sysjs.js", "./lib/mach-sysjs.js");
+    const js_src_path_size = std.mem.replacementSize(u8, bindings.getJSSrc(), b.pathFromRoot("."), ".");
+    const js_src_path = try b.allocator.alloc(u8, js_src_path_size);
+    _ = std.mem.replace(u8, bindings.getJSSrc(), b.pathFromRoot("."), ".", js_src_path);
 
-    b.installArtifact(exe);
+    b.installFile(js_main_path, "bin/main.js");
+    b.installFile(js_src_path, "bin/heap.js");
 }
