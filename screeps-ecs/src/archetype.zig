@@ -56,6 +56,17 @@ const Column = struct {
         const end = beg + self.type_size;
 
         const bytes = self.memory[beg..end];
+        return @as(*const T, @alignCast(@ptrCast(bytes.ptr)));
+    }
+
+    pub fn getMut(self: *Self, index: usize, T: type) *T {
+        assert(index < self.memory.len);
+        assert(typeID(T) == self.type_id);
+
+        const beg = index * self.type_size;
+        const end = beg + self.type_size;
+
+        const bytes = self.memory[beg..end];
         return @as(*T, @alignCast(@ptrCast(bytes.ptr)));
     }
 };
@@ -224,13 +235,26 @@ pub const ArchetypeTable = struct {
         }
     }
 
-    /// Get the value of a component on a given row.
+    /// Get an immutable pointer to a component on a given row.
     pub fn getComponent(self: *const Self, row: usize, comptime Component: type) *const Component {
         assert(row < self.row_len);
 
-        for (self.columns) |column| {
+        for (self.columns) |*column| {
             if (column.type_id == typeID(Component)) {
                 return column.get(row, Component);
+            }
+        }
+
+        std.debug.panic("Table does not contain component: {}", .{Component});
+    }
+
+    /// Get an mutable pointer to a component on a given row.
+    pub fn getComponentMut(self: *Self, row: usize, comptime Component: type) *Component {
+        assert(row < self.row_len);
+
+        for (self.columns) |*column| {
+            if (column.type_id == typeID(Component)) {
+                return column.getMut(row, Component);
             }
         }
 

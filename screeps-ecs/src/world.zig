@@ -89,6 +89,7 @@ pub const World = struct {
         return entity;
     }
 
+    /// Return an immutable pointer to the given component of an entity.
     pub fn getComponent(self: *const Self, id: EntityID, comptime Component: type) Error!*const Component {
         // Find the entities archetype table.
         const index = self.entities.get(id) orelse return Error.EntityInvalid;
@@ -100,6 +101,20 @@ pub const World = struct {
         }
 
         return table.getComponent(index.row, Component);
+    }
+
+    /// Return an mutable pointer to the given component of an entity.
+    pub fn getComponentMut(self: *Self, id: EntityID, comptime Component: type) Error!*Component {
+        // Find the entities archetype table.
+        const index = self.entities.get(id) orelse return Error.EntityInvalid;
+        assert(index.table < self.archetypes.items.len);
+        const table = &self.archetypes.items[index.table];
+
+        if (!table.hasComponent(Component)) {
+            return Error.ComponentMissing;
+        }
+
+        return table.getComponentMut(index.row, Component);
     }
 
     fn nextEntityID(self: *Self) EntityID {
@@ -218,5 +233,22 @@ pub const Test = struct {
 
         const result = world.getEntity(entity, FunkyNameAndID);
         try testing.expectError(Error.ComponentMissing, result);
+    }
+
+    test "getComponent" {
+        var world = World.init(allocator);
+        defer world.deinit();
+
+        const entity_in = NameAndID.init(Name.init("test"), ID.init(69, 42));
+        const entity = try world.newEntity(entity_in);
+
+        const name = try world.getComponent(entity, Name);
+        try testing.expectEqual(entity_in.name, name.*);
+
+        const name_mut = try world.getComponentMut(entity, Name);
+        name_mut.* = Name.init("mutated");
+
+        const mutated_name = try world.getComponent(entity, Name);
+        try testing.expectEqual(Name.init("mutated"), mutated_name.*);
     }
 };
