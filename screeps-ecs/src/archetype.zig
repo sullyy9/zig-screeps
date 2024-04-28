@@ -6,6 +6,63 @@ const StructField = std.builtin.Type.StructField;
 const typeid = @import("typeid.zig");
 const typeID = typeid.typeID;
 
+/// Assert that a type is a valid component.
+pub fn assertIsComponent(comptime Component: type) void {
+    comptime switch (@typeInfo(Component)) {
+        .Type,
+        .Void,
+        .NoReturn,
+        .Pointer,
+        .ComptimeFloat,
+        .ComptimeInt,
+        .Undefined,
+        .Null,
+        .Fn,
+        .Frame,
+        .AnyFrame,
+        .Vector,
+        => @compileError(std.fmt.comptimePrint(
+            "Type '{}' does not fullfill the requirements of Component. " ++
+                "Components may not be of type '{s}'",
+            .{ Component, @tagName(@typeInfo(Component)) },
+        )),
+        else => return,
+    };
+}
+
+pub fn assertIsArchetype(comptime Archetype: type) void {
+    comptime switch (@typeInfo(Archetype)) {
+        .Struct => {
+            for (std.meta.fields(Archetype), 0..) |f1, i| {
+                const field1: StructField = f1;
+                for (std.meta.fields(Archetype), 0..) |f2, j| {
+                    const field2: StructField = f2;
+
+                    if (i == j) continue;
+
+                    if (field1.type == field2.type) {
+                        @compileError(std.fmt.comptimePrint(
+                            "Type '{}' does not fullfill the requirements of Archetype. " ++
+                                "All archetype fields must have unique types. " ++
+                                "Fields '{s}' and '{s}' are both of type '{}'",
+                            .{ Archetype, field1.name, field2.name, field1.type},
+                        ));
+                    }
+                }
+            }
+        },
+        else => @compileError(std.fmt.comptimePrint(
+            "Type '{}' does not fullfill the requirements of Archetype. " ++
+                "Archetypes may only be struct types. " ++
+                "Type was of type '{}'",
+            .{
+                Archetype,
+                @tagName(@typeInfo(Archetype)),
+            },
+        )),
+    };
+}
+
 const Column = struct {
     const Self = @This();
 
@@ -15,6 +72,8 @@ const Column = struct {
     memory: []u8,
 
     pub fn initEmpty(Component: type) Self {
+        comptime assertIsComponent(Component);
+
         return Self{
             .type_id = typeID(Component),
             .type_size = @sizeOf(Component),
@@ -24,6 +83,8 @@ const Column = struct {
     }
 
     pub fn initCapacity(allocator: Allocator, Component: type, capacity: usize) Allocator.Error!Self {
+        comptime assertIsComponent(Component);
+
         return Self{
             .type_id = typeID(Component),
             .type_size = @sizeOf(Component),
@@ -90,7 +151,7 @@ pub const ArchetypeTable = struct {
     }
 
     pub fn initEmpty(allocator: Allocator, comptime Archetype: type) Allocator.Error!Self {
-        assert(@typeInfo(Archetype) == .Struct);
+        comptime assertIsArchetype(Archetype);
 
         const fields: []const StructField = std.meta.fields(Archetype);
         var columns = try allocator.alloc(Column, fields.len);
@@ -115,6 +176,8 @@ pub const ArchetypeTable = struct {
 
     /// Determine if this table contains a given component.
     pub fn hasComponent(self: *const Self, comptime Component: type) bool {
+        comptime assertIsComponent(Component);
+
         for (self.columns) |column| {
             if (column.type_id == typeID(Component)) {
                 return true;
@@ -127,7 +190,7 @@ pub const ArchetypeTable = struct {
     /// Determine if this table contains all of the archetypes components. Does not determine if the
     /// table contains additional components not present in the archetype.
     pub fn hasComponentsOf(self: *const Self, comptime Archetype: type) bool {
-        assert(@typeInfo(Archetype) == .Struct);
+        comptime assertIsArchetype(Archetype);
 
         // Check that this table has a column for each component.
         inline for (std.meta.fields(Archetype)) |f| {
@@ -143,6 +206,7 @@ pub const ArchetypeTable = struct {
     /// Add a new component to the archetype this table covers. The value of the component for every
     /// row will be undefined.
     pub fn addComponent(self: *Self, allocator: Allocator, comptime Component: type) Allocator.Error!void {
+        comptime assertIsComponent(Component);
         assert(!hasComponent(self, Component));
 
         // Create the new column with each element set to undefined.
@@ -206,7 +270,7 @@ pub const ArchetypeTable = struct {
 
     /// Insert a new row and return it's index.
     pub fn insertRow(self: *Self, allocator: Allocator, value: anytype) Allocator.Error!usize {
-        assert(@typeInfo(@TypeOf(value)) == .Struct);
+        comptime assertIsArchetype(@TypeOf(value));
         assert(self.hasComponentsOf(@TypeOf(value)));
 
         try self.ensureUnusedCapacity(allocator, 1);
@@ -225,6 +289,7 @@ pub const ArchetypeTable = struct {
 
     /// Set the value of a component on a given row.
     pub fn setComponent(self: *Self, row: usize, value: anytype) void {
+        comptime assertIsComponent(@TypeOf(value));
         assert(row < self.row_len);
 
         for (self.columns) |*column| {
@@ -237,6 +302,7 @@ pub const ArchetypeTable = struct {
 
     /// Get an immutable pointer to a component on a given row.
     pub fn getComponent(self: *const Self, row: usize, comptime Component: type) *const Component {
+        comptime assertIsComponent(Component);
         assert(row < self.row_len);
 
         for (self.columns) |*column| {
@@ -250,6 +316,7 @@ pub const ArchetypeTable = struct {
 
     /// Get an mutable pointer to a component on a given row.
     pub fn getComponentMut(self: *Self, row: usize, comptime Component: type) *Component {
+        comptime assertIsComponent(Component);
         assert(row < self.row_len);
 
         for (self.columns) |*column| {
@@ -262,6 +329,8 @@ pub const ArchetypeTable = struct {
     }
 
     fn getColumn(self: *const Self, comptime Component: type) *const Column {
+        comptime assertIsComponent(Component);
+
         for (self.columns) |*column| {
             if (column.type_id == typeID(Component)) {
                 return column;
@@ -272,6 +341,8 @@ pub const ArchetypeTable = struct {
     }
 
     fn getColumnMut(self: *Self, comptime Component: type) *Column {
+        comptime assertIsComponent(Component);
+
         for (self.columns) |*column| {
             if (column.type_id == typeID(Component)) {
                 return column;
