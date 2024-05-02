@@ -190,6 +190,10 @@ pub const ArchetypeTable = struct {
         allocator.free(self.columns);
     }
 
+    pub fn rows(self: *const Self) usize {
+        return self.row_len;
+    }
+
     /// Determine if this table contains a given component.
     pub fn hasComponent(self: *const Self, comptime Component: type) bool {
         comptime assertIsComponent(Component);

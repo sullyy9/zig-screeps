@@ -8,6 +8,7 @@ const AutoHashMapUnmanaged = std.AutoHashMapUnmanaged;
 
 const archetype = @import("archetype.zig");
 const ArchetypeTable = archetype.ArchetypeTable;
+const assertIsComponent = archetype.assertIsComponent;
 
 pub const EntityID = struct {
     id: usize,
@@ -117,6 +118,17 @@ pub const World = struct {
         return table.getComponentMut(index.row, Component);
     }
 
+    pub fn iterComponent(self: *const Self, comptime Component: type) ComponentIter(Component) {
+        comptime assertIsComponent(Component);
+        return ComponentIter(Component).init(self.archetypes.items);
+    }
+
+    pub fn iterComponentMut(self: *Self, comptime Component: type) ComponentIterMut(Component) {
+        comptime assertIsComponent(Component);
+        return ComponentIterMut(Component).init(self.archetypes.items);
+    }
+
+
     fn nextEntityID(self: *Self) EntityID {
         const id = EntityID{ .id = self.entity_count };
         self.entity_count += 1;
@@ -157,6 +169,105 @@ pub const World = struct {
         return null;
     }
 };
+
+pub fn ComponentIter(comptime Component: type) type {
+    assertIsComponent(Component);
+
+    return struct {
+        const Self = @This();
+
+        table: isize,
+        tables: []const ArchetypeTable,
+
+        row: usize,
+        column: []const Component,
+
+        pub fn init(tables: []const ArchetypeTable) Self {
+            return Self{
+                .table = -1,
+                .row = 0,
+                .tables = tables,
+                .column = &.{},
+            };
+        }
+
+        pub fn next(self: *Self) ?*const Component {
+            if (self.row < self.column.len) {
+                const component = &self.column[self.row];
+                self.row += 1;
+                return component;
+            }
+
+            // If we've exhausted this table, move to the next one that isn't empty and contains
+            // the component.
+            while (true) {
+                self.table += 1;
+                if (self.table >= self.tables.len) {
+                    return null;
+                }
+
+                const table = self.tables[@intCast(self.table)];
+                if (table.hasComponent(Component) and table.rows() > 0) {
+                    break;
+                }
+            }
+
+            self.row = 1;
+            self.column = self.tables[@intCast(self.table)].getComponentSlice(Component);
+            return &self.column[0];
+        }
+    };
+}
+
+pub fn ComponentIterMut(comptime Component: type) type {
+    assertIsComponent(Component);
+
+    return struct {
+        const Self = @This();
+
+        table: isize,
+        tables: []ArchetypeTable,
+
+        row: usize,
+        column: []Component,
+
+        pub fn init(tables: []ArchetypeTable) Self {
+            return Self{
+                .table = -1,
+                .row = 0,
+                .tables = tables,
+                .column = &.{},
+            };
+        }
+
+        pub fn next(self: *Self) ?*Component {
+            if (self.row < self.column.len) {
+                const component = &self.column[self.row];
+                self.row += 1;
+                return component;
+            }
+
+            // If we've exhausted this table, move to the next one that isn't empty and contains
+            // the component.
+            while (true) {
+                self.table += 1;
+                if (self.table >= self.tables.len) {
+                    return null;
+                }
+
+                const table = self.tables[@intCast(self.table)];
+                if (table.hasComponent(Component) and table.rows() > 0) {
+                    break;
+                }
+            }
+
+            self.row = 1;
+            self.column = self.tables[@intCast(self.table)].getComponentSliceMut(Component);
+            return &self.column[0];
+        }
+    };
+}
+
 
 pub const Test = struct {
     const testing = std.testing;
@@ -251,4 +362,83 @@ pub const Test = struct {
         const mutated_name = try world.getComponent(entity, Name);
         try testing.expectEqual(Name.init("mutated"), mutated_name.*);
     }
+
+    test "iterComponent" {
+        var world = World.init(allocator);
+        defer world.deinit();
+
+        const names: [5]Name = .{
+            Name.init("test1"),
+            Name.init("test2"),
+            Name.init("test3"),
+            Name.init("test4"),
+            Name.init("test5"),
+        };
+
+        _ = try world.newEntity(NameAndID.init(names[0], ID.init(69, 42)));
+        _ = try world.newEntity(NameAndID.init(names[1], ID.init(70, 43)));
+        _ = try world.newEntity(NameAndID.init(names[2], ID.init(71, 44)));
+        _ = try world.newEntity(FunkyNameAndID.init(names[3], ID.init(69, 42), Funky.initInAGoodWay()));
+        _ = try world.newEntity(FunkyNameAndID.init(names[4], ID.init(70, 43), Funky.initInABadWay()));
+
+        var name_iter = world.iterComponent(Name);
+
+        var seen: [names.len]bool = undefined;
+        @memset(&seen, false);
+
+        while (name_iter.next()) |name| {
+            var index: ?usize = null;
+            for (names, 0..) |expected_name, i| {
+                if (std.mem.eql(u8, name.name, expected_name.name)) {
+                    index = i;
+                    break;
+                }
+            }
+
+            try testing.expect(index != null);
+            seen[index.?] = true;
+        }
+
+        try testing.expect(std.mem.allEqual(bool, &seen, true));
+    }
+
+    test "iterComponentMut" {
+        var world = World.init(allocator);
+        defer world.deinit();
+
+        const names: [5]Name = .{
+            Name.init("test1"),
+            Name.init("test2"),
+            Name.init("test3"),
+            Name.init("test4"),
+            Name.init("test5"),
+        };
+
+        _ = try world.newEntity(NameAndID.init(names[0], ID.init(69, 42)));
+        _ = try world.newEntity(NameAndID.init(names[1], ID.init(70, 43)));
+        _ = try world.newEntity(NameAndID.init(names[2], ID.init(71, 44)));
+        _ = try world.newEntity(FunkyNameAndID.init(names[3], ID.init(69, 42), Funky.initInAGoodWay()));
+        _ = try world.newEntity(FunkyNameAndID.init(names[4], ID.init(70, 43), Funky.initInABadWay()));
+
+        var name_iter = world.iterComponentMut(Name);
+
+        var seen: [names.len]bool = undefined;
+        @memset(&seen, false);
+
+        while (name_iter.next()) |name| {
+            var index: ?usize = null;
+            for (names, 0..) |expected_name, i| {
+                if (std.mem.eql(u8, name.name, expected_name.name)) {
+                    index = i;
+                    break;
+                }
+            }
+
+            try testing.expect(index != null);
+            seen[index.?] = true;
+        }
+
+        try testing.expect(std.mem.allEqual(bool, &seen, true));
+    }
+
 };
