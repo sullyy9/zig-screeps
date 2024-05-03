@@ -1,8 +1,20 @@
 const std = @import("std");
 const assert = std.debug.assert;
+const UnionField = std.builtin.Type.UnionField;
 const StructField = std.builtin.Type.StructField;
 
 fn structStringLen(comptime fields: []const StructField) usize {
+    comptime var len = 0;
+
+    inline for (fields) |field| {
+        len += field.name.len;
+        len += @typeName(field.type).len;
+    }
+
+    return len;
+}
+
+fn unionStringLen(comptime fields: []const UnionField) usize {
     comptime var len = 0;
 
     inline for (fields) |field| {
@@ -31,6 +43,23 @@ fn typeString(comptime T: type) []const u8 {
             }
 
             return &struct_name;
+        },
+        .Union => |union_info| {
+            const name_len = comptime unionStringLen(union_info.fields);
+
+            var name: [name_len]u8 = undefined;
+            comptime var beg = 0;
+
+            inline for (union_info.fields) |f| {
+                const field: UnionField = f;
+
+                const field_name = field.name ++ @typeName(field.type);
+                const end = beg + field_name.len;
+                @memcpy(name[beg..end], field_name);
+                beg = end;
+            }
+
+            return &name;
         },
         .Type,
         .Void,
@@ -67,7 +96,7 @@ pub fn typeID(comptime T: type) usize {
 
 test "typeID" {
     const testing = std.testing;
-    
+
     const TestStruct = struct {
         thingy: usize,
     };
