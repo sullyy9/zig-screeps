@@ -1,5 +1,4 @@
 {
     "zig.zls.path": "zls",
     "zig.zls.warnStyle": true,
-    "zig.zls.semanticTokens": "full"
 }

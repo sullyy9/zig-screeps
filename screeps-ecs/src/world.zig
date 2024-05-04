@@ -350,87 +350,14 @@ pub fn ComponentIterMut(comptime Components: []const type) type {
 pub const Test = struct {
     const testing = std.testing;
     const allocator = std.testing.allocator;
-
     const ArrayList = std.ArrayList;
 
-    const Name = struct {
-        const Self = @This();
-
-        name: []const u8,
-
-        pub fn init(name: []const u8) Self {
-            return Self{ .name = name };
-        }
-
-        pub fn order(lhs: Self, rhs: Self) std.math.Order {
-            return std.mem.order(u8, lhs.name, rhs.name);
-        }
-    };
-
-    const ID = struct {
-        const Self = @This();
-
-        big_id: u64,
-        smol_id: u8,
-
-        pub fn init(big: u64, smol: u8) Self {
-            return Self{ .big_id = big, .smol_id = smol };
-        }
-
-        pub fn order(lhs: Self, rhs: Self) std.math.Order {
-            switch (std.math.order(lhs.big_id, rhs.big_id)) {
-                .eq => return std.math.order(lhs.smol_id, rhs.smol_id),
-                .gt => return .gt,
-                .lt => return .lt,
-            }
-        }
-    };
-
-    const Funky = struct {
-        const Self = @This();
-
-        in_a_good_way: bool,
-        in_a_bad_way: bool,
-
-        pub fn initInAGoodWay() Self {
-            return Self{ .in_a_bad_way = false, .in_a_good_way = true };
-        }
-
-        pub fn initInABadWay() Self {
-            return Self{ .in_a_bad_way = true, .in_a_good_way = false };
-        }
-    };
-
-    const NameAndID = struct {
-        const Self = @This();
-
-        name: Name,
-        id: ID,
-
-        pub fn init(name: Name, id: ID) Self {
-            return Self{ .name = name, .id = id };
-        }
-
-        pub fn order(lhs: Self, rhs: Self) std.math.Order {
-            switch (ID.order(lhs.id, rhs.id)) {
-                .eq => return Name.order(lhs.name, rhs.name),
-                .gt => return .gt,
-                .lt => return .lt,
-            }
-        }
-    };
-
-    const FunkyNameAndID = struct {
-        const Self = @This();
-
-        name: Name,
-        id: ID,
-        funky: Funky,
-
-        pub fn init(name: Name, id: ID, funky: Funky) Self {
-            return Self{ .name = name, .id = id, .funky = funky };
-        }
-    };
+    const components = @import("testing/components.zig");
+    const ID = components.ID;
+    const Name = components.Name;
+    const Funky = components.Funky;
+    const NameAndID = components.NameAndID;
+    const FunkyNameAndID = components.FunkyNameAndID;
 
     const NameSortCtx = struct {
         fn lessThan(_: void, lhs: Name, rhs: Name) bool {
@@ -438,11 +365,17 @@ pub const Test = struct {
         }
     };
 
+    const NameAndIDSortCtx = struct {
+        fn lessThan(_: void, lhs: NameAndID, rhs: NameAndID) bool {
+            return NameAndID.order(lhs, rhs) == .lt;
+        }
+    };
+
     test "newEntity" {
         var world = World.init(allocator);
         defer world.deinit();
 
-        const entity_in = NameAndID.init(Name.init("test"), ID.init(69, 42));
+        const entity_in = NameAndID.init(Name.init("test"), ID.init(69));
         const entity = try world.newEntity(entity_in);
 
         const entity_out = try world.getEntity(entity, NameAndID);
@@ -456,7 +389,7 @@ pub const Test = struct {
         var world = World.init(allocator);
         defer world.deinit();
 
-        const entity_in = NameAndID.init(Name.init("test"), ID.init(69, 42));
+        const entity_in = NameAndID.init(Name.init("test"), ID.init(69));
         const entity = try world.newEntity(entity_in);
 
         const name = try world.getComponent(entity, Name);
@@ -481,11 +414,11 @@ pub const Test = struct {
             Name.init("test5"),
         };
 
-        _ = try world.newEntity(NameAndID.init(names[0], ID.init(69, 42)));
-        _ = try world.newEntity(NameAndID.init(names[1], ID.init(70, 43)));
-        _ = try world.newEntity(NameAndID.init(names[2], ID.init(71, 44)));
-        _ = try world.newEntity(FunkyNameAndID.init(names[3], ID.init(69, 42), Funky.initInAGoodWay()));
-        _ = try world.newEntity(FunkyNameAndID.init(names[4], ID.init(70, 43), Funky.initInABadWay()));
+        _ = try world.newEntity(NameAndID.init(names[0], ID.init(1)));
+        _ = try world.newEntity(NameAndID.init(names[1], ID.init(2)));
+        _ = try world.newEntity(NameAndID.init(names[2], ID.init(3)));
+        _ = try world.newEntity(FunkyNameAndID.init(names[3], ID.init(4), Funky{ .in_a_good_way = 6 }));
+        _ = try world.newEntity(FunkyNameAndID.init(names[4], ID.init(5), Funky{ .in_a_bad_way = 4 }));
 
         var iter = world.iter(&.{Name});
 
@@ -511,11 +444,11 @@ pub const Test = struct {
             Name.init("test5"),
         };
 
-        _ = try world.newEntity(NameAndID.init(names[0], ID.init(69, 42)));
-        _ = try world.newEntity(NameAndID.init(names[1], ID.init(70, 43)));
-        _ = try world.newEntity(NameAndID.init(names[2], ID.init(71, 44)));
-        _ = try world.newEntity(FunkyNameAndID.init(names[3], ID.init(69, 42), Funky.initInAGoodWay()));
-        _ = try world.newEntity(FunkyNameAndID.init(names[4], ID.init(70, 43), Funky.initInABadWay()));
+        _ = try world.newEntity(NameAndID.init(names[0], ID.init(1)));
+        _ = try world.newEntity(NameAndID.init(names[1], ID.init(2)));
+        _ = try world.newEntity(NameAndID.init(names[2], ID.init(3)));
+        _ = try world.newEntity(FunkyNameAndID.init(names[3], ID.init(4), Funky{ .in_a_good_way = 6 }));
+        _ = try world.newEntity(FunkyNameAndID.init(names[4], ID.init(5), Funky{ .in_a_bad_way = 4 }));
 
         var iter = world.iterMut(&.{Name});
 
@@ -533,127 +466,63 @@ pub const Test = struct {
         var world = World.init(allocator);
         defer world.deinit();
 
-        const names_and_ids: [5]Tuple(&.{ Name, ID }) = .{
-            .{ Name.init("test1"), ID.init(69, 42) },
-            .{ Name.init("test2"), ID.init(70, 43) },
-            .{ Name.init("test3"), ID.init(71, 44) },
-            .{ Name.init("test4"), ID.init(69, 42) },
-            .{ Name.init("test5"), ID.init(70, 43) },
+        var entities = [_]NameAndID{
+            NameAndID.initRaw("test1", 1),
+            NameAndID.initRaw("test2", 2),
+            NameAndID.initRaw("test3", 3),
+            NameAndID.initRaw("test4", 4),
+            NameAndID.initRaw("test5", 5),
         };
 
-        _ = try world.newEntity(NameAndID.init(names_and_ids[0][0], names_and_ids[0][1]));
-        _ = try world.newEntity(NameAndID.init(names_and_ids[1][0], names_and_ids[1][1]));
-        _ = try world.newEntity(NameAndID.init(names_and_ids[2][0], names_and_ids[2][1]));
-        _ = try world.newEntity(FunkyNameAndID.init(names_and_ids[3][0], names_and_ids[3][1], Funky.initInAGoodWay()));
-        _ = try world.newEntity(FunkyNameAndID.init(names_and_ids[4][0], names_and_ids[4][1], Funky.initInABadWay()));
+        _ = try world.newEntity(entities[0]);
+        _ = try world.newEntity(entities[1]);
+        _ = try world.newEntity(entities[2]);
+        _ = try world.newEntity(FunkyNameAndID.init(entities[3].name, entities[3].id, Funky{ .in_a_good_way = 6 }));
+        _ = try world.newEntity(FunkyNameAndID.init(entities[4].name, entities[4].id, Funky{ .in_a_bad_way = 4 }));
 
-        var name_iter = world.iter(&.{ Name, ID });
+        var iter = world.iter(&.{ Name, ID });
 
-        var seen: [names_and_ids.len]bool = undefined;
-        @memset(&seen, false);
+        var collected = ArrayList(NameAndID).init(allocator);
+        defer collected.deinit();
+        while (iter.next()) |item| try collected.append(NameAndID.init(item[0].*, item[1].*));
 
-        while (name_iter.next()) |next| {
-            const name, const id = next;
+        std.sort.insertion(NameAndID, &entities, {}, NameAndIDSortCtx.lessThan);
+        std.sort.insertion(NameAndID, collected.items, {}, NameAndIDSortCtx.lessThan);
 
-            for (names_and_ids, 0..) |expected, i| {
-                const expected_name, const expected_id = expected;
-
-                if (std.meta.eql(name.*, expected_name) and std.meta.eql(id.*, expected_id)) {
-                    try testing.expect(seen[i] == false);
-                    seen[i] = true;
-                    break;
-                }
-            }
-        }
-
-        try testing.expect(std.mem.allEqual(bool, &seen, true));
+        try testing.expectEqualSlices(NameAndID, &entities, collected.items);
     }
 
     test "iterMut Multiple" {
         var world = World.init(allocator);
         defer world.deinit();
 
-        const names_and_ids: [5]Tuple(&.{ Name, ID }) = .{
-            .{ Name.init("test1"), ID.init(69, 42) },
-            .{ Name.init("test2"), ID.init(70, 43) },
-            .{ Name.init("test3"), ID.init(71, 44) },
-            .{ Name.init("test4"), ID.init(69, 42) },
-            .{ Name.init("test5"), ID.init(70, 43) },
+        var entities = [_]NameAndID{
+            NameAndID.initRaw("test1", 1),
+            NameAndID.initRaw("test2", 2),
+            NameAndID.initRaw("test3", 3),
+            NameAndID.initRaw("test4", 4),
+            NameAndID.initRaw("test5", 5),
         };
 
-        _ = try world.newEntity(NameAndID.init(names_and_ids[0][0], names_and_ids[0][1]));
-        _ = try world.newEntity(NameAndID.init(names_and_ids[1][0], names_and_ids[1][1]));
-        _ = try world.newEntity(NameAndID.init(names_and_ids[2][0], names_and_ids[2][1]));
-        _ = try world.newEntity(FunkyNameAndID.init(names_and_ids[3][0], names_and_ids[3][1], Funky.initInAGoodWay()));
-        _ = try world.newEntity(FunkyNameAndID.init(names_and_ids[4][0], names_and_ids[4][1], Funky.initInABadWay()));
-
-        var name_iter = world.iterMut(&.{ Name, ID });
-
-        var seen: [names_and_ids.len]bool = undefined;
-        @memset(&seen, false);
-
-        while (name_iter.next()) |next| {
-            const name, const id = next;
-
-            for (names_and_ids, 0..) |expected, i| {
-                const expected_name, const expected_id = expected;
-
-                if (std.meta.eql(name.*, expected_name) and std.meta.eql(id.*, expected_id)) {
-                    try testing.expect(seen[i] == false);
-                    seen[i] = true;
-                    break;
-                }
-            }
-        }
-        try testing.expect(std.mem.allEqual(bool, &seen, true));
-    }
-
-    test "iterMut Mutation" {
-        var world = World.init(allocator);
-        defer world.deinit();
-
-        var names_and_ids: [5]Tuple(&.{ Name, ID }) = .{
-            .{ Name.init("test1"), ID.init(69, 42) },
-            .{ Name.init("test2"), ID.init(70, 43) },
-            .{ Name.init("test3"), ID.init(71, 44) },
-            .{ Name.init("test4"), ID.init(69, 42) },
-            .{ Name.init("test5"), ID.init(70, 43) },
-        };
-
-        _ = try world.newEntity(NameAndID.init(names_and_ids[0][0], names_and_ids[0][1]));
-        _ = try world.newEntity(NameAndID.init(names_and_ids[1][0], names_and_ids[1][1]));
-        _ = try world.newEntity(NameAndID.init(names_and_ids[2][0], names_and_ids[2][1]));
-        _ = try world.newEntity(FunkyNameAndID.init(names_and_ids[3][0], names_and_ids[3][1], Funky.initInAGoodWay()));
-        _ = try world.newEntity(FunkyNameAndID.init(names_and_ids[4][0], names_and_ids[4][1], Funky.initInABadWay()));
+        _ = try world.newEntity(entities[0]);
+        _ = try world.newEntity(entities[1]);
+        _ = try world.newEntity(entities[2]);
+        _ = try world.newEntity(FunkyNameAndID.init(entities[3].name, entities[3].id, Funky{ .in_a_good_way = 6 }));
+        _ = try world.newEntity(FunkyNameAndID.init(entities[4].name, entities[4].id, Funky{ .in_a_bad_way = 4 }));
 
         var iter = world.iterMut(&.{ Name, ID });
-        while (iter.next()) |next| {
-            _, const id = next;
-            id.big_id += 10;
-        }
-
-        for (&names_and_ids) |*item| {
-            const id = &item[1];
-            id.big_id += 10;
-        }
-
-        var seen: [names_and_ids.len]bool = undefined;
-        @memset(&seen, false);
+        while (iter.next()) |item| item[1].id += 10;
+        for (&entities) |*item| item.id.id += 10;
 
         iter = world.iterMut(&.{ Name, ID });
-        while (iter.next()) |next| {
-            const name, const id = next;
 
-            for (names_and_ids, 0..) |expected, i| {
-                const expected_name, const expected_id = expected;
+        var collected = ArrayList(NameAndID).init(allocator);
+        defer collected.deinit();
+        while (iter.next()) |item| try collected.append(NameAndID.init(item[0].*, item[1].*));
 
-                if (std.meta.eql(name.*, expected_name) and std.meta.eql(id.*, expected_id)) {
-                    try testing.expect(seen[i] == false);
-                    seen[i] = true;
-                    break;
-                }
-            }
-        }
-        try testing.expect(std.mem.allEqual(bool, &seen, true));
+        std.sort.insertion(NameAndID, &entities, {}, NameAndIDSortCtx.lessThan);
+        std.sort.insertion(NameAndID, collected.items, {}, NameAndIDSortCtx.lessThan);
+
+        try testing.expectEqualSlices(NameAndID, &entities, collected.items);
     }
 };
