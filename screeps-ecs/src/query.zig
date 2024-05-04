@@ -1,9 +1,6 @@
 const std = @import("std");
 const Tuple = std.meta.Tuple;
 const assert = std.debug.assert;
-const ArrayList = std.ArrayList;
-const Allocator = std.mem.Allocator;
-const StructField = std.builtin.Type.StructField;
 
 const archetype = @import("archetype.zig");
 const ArchetypeTable = archetype.ArchetypeTable;
@@ -12,6 +9,27 @@ const assertIsComponent = archetype.assertIsComponent;
 const World = @import("world.zig").World;
 const ComponentIter = @import("world.zig").ComponentIter;
 
+pub fn assertIsQuery(comptime T: type) void {
+    switch (@typeInfo(T)) {
+        .Struct, .Union, .Enum => {},
+        else => @compileError(std.fmt.comptimePrint(
+            "Type '{}' does not fullfill the requirements of Query. " ++
+                "Queries must be of type struct, enum or union. " ++
+                "Type is '{}'",
+            .{ T, T },
+        )),
+    }
+
+    if (!@hasDecl(T, "querytag")) {
+        @compileError(std.fmt.comptimePrint(
+            "Type '{}' does not fullfill the requirements of Query. " ++
+                "Queries must be contain the declaration 'querytag'. " ++
+                "Type does not contain the declaration 'querytag'",
+            .{T},
+        ));
+    }
+}
+
 /// Assert that a type is a valid Query Data type.
 /// Must be a pointer to a component or a tuple of pointers to components
 fn assertIsQueryData(comptime Data: type) void {
@@ -19,7 +37,7 @@ fn assertIsQueryData(comptime Data: type) void {
         .Pointer => |T| assertIsComponent(T.child),
         else => @compileError(std.fmt.comptimePrint(
             "Type '{}' does not fullfill the requirements of Data. " ++
-                "Data may be a Component pointer or tuple of Component pointers. " ++
+                "Data must be a tuple of Component pointers. " ++
                 "Type is of type '{s}'",
             .{ Data, @tagName(@typeInfo(Data)) },
         )),
@@ -28,29 +46,6 @@ fn assertIsQueryData(comptime Data: type) void {
 
 fn assertIsQueryFilter(comptime Filter: type) void {
     _ = Filter;
-}
-
-fn DereferencedType(comptime T: type) type {
-    comptime switch (@typeInfo(T)) {
-        .Pointer => |p| return p.child,
-        else => @compileError("Expected pointer type"),
-    };
-}
-
-fn ComponentLists(comptime Data: type) type {
-    comptime switch (@typeInfo(Data)) {
-        .Struct => {
-            // Tuple of pointers
-            const len = std.meta.fields(Data).len;
-            var inner_types: [len]type = undefined;
-
-            for (std.meta.fields(Data), 0..) |f, i| {
-                const field: StructField = f;
-                inner_types[i] = ArrayList([]field.type);
-            }
-        },
-        .Pointer => return ArrayList([]Data),
-    };
 }
 
 /// Return the number of mutable pointer types in a slice of types.
@@ -141,6 +136,29 @@ fn mapTypesToImmutableSlices(comptime Ts: []const type) [Ts.len]type {
 /// Filter: Todo.
 ///
 pub fn Query(comptime data: []const type, comptime Filter: type) type {
+    inline for (data) |Data| comptime assertIsQueryData(Data);
+    comptime assertIsQueryFilter(Filter);
+
+    return struct {
+        const Self = @This();
+
+        const querytag = {};
+
+        world: *World,
+
+        pub fn init(world: *World) Self {
+            return Self{
+                .world = world,
+            };
+        }
+
+        pub fn iterMut(self: *const Self) IterMut(data, Filter) {
+            return IterMut(data, Filter).init(self.world);
+        }
+    };
+}
+
+pub fn IterMut(comptime data: []const type, comptime Filter: type) type {
     inline for (data) |Data| comptime assertIsQueryData(Data);
     comptime assertIsQueryFilter(Filter);
 
@@ -259,6 +277,7 @@ pub fn Query(comptime data: []const type, comptime Filter: type) type {
 
 pub const Test = struct {
     const testing = std.testing;
+    const ArrayList = std.ArrayList;
     const allocator = std.testing.allocator;
 
     const components = @import("testing/components.zig");
@@ -267,12 +286,6 @@ pub const Test = struct {
     const Funky = components.Funky;
     const NameAndID = components.NameAndID;
     const FunkyNameAndID = components.FunkyNameAndID;
-
-    const NameSortCtx = struct {
-        fn lessThan(_: void, lhs: Name, rhs: Name) bool {
-            return Name.order(lhs, rhs) == .lt;
-        }
-    };
 
     const NameAndIDSortCtx = struct {
         fn lessThan(_: void, lhs: NameAndID, rhs: NameAndID) bool {
@@ -302,7 +315,8 @@ pub const Test = struct {
 
         var collected = ArrayList(NameAndID).init(allocator);
         defer collected.deinit();
-        while (query.next()) |item| try collected.append(NameAndID.init(item[0].*, item[1].*));
+        var iter = query.iterMut();
+        while (iter.next()) |item| try collected.append(NameAndID.init(item[0].*, item[1].*));
 
         std.sort.insertion(NameAndID, &entities, {}, NameAndIDSortCtx.lessThan);
         std.sort.insertion(NameAndID, collected.items, {}, NameAndIDSortCtx.lessThan);
@@ -329,14 +343,17 @@ pub const Test = struct {
         _ = try world.newEntity(FunkyNameAndID.init(entities[4].name, entities[4].id, Funky{ .in_a_bad_way = 4 }));
 
         var query = Query(&.{ *const Name, *ID }, void).init(&world);
-        while (query.next()) |item| item[1].id += 10;
+        var iter = query.iterMut();
+        while (iter.next()) |item| item[1].id += 10;
         for (&entities) |*ent| ent.id.id += 10;
 
         query = Query(&.{ *const Name, *ID }, void).init(&world);
 
         var collected = ArrayList(NameAndID).init(allocator);
         defer collected.deinit();
-        while (query.next()) |item| try collected.append(NameAndID.init(item[0].*, item[1].*));
+
+        iter = query.iterMut();
+        while (iter.next()) |item| try collected.append(NameAndID.init(item[0].*, item[1].*));
 
         std.sort.insertion(NameAndID, &entities, {}, NameAndIDSortCtx.lessThan);
         std.sort.insertion(NameAndID, collected.items, {}, NameAndIDSortCtx.lessThan);
