@@ -1,6 +1,7 @@
 const std = @import("std");
-const assert = std.debug.assert;
+const json = std.json;
 const Tuple = std.meta.Tuple;
+const assert = std.debug.assert;
 const Allocator = std.mem.Allocator;
 const StructField = std.builtin.Type.StructField;
 const ArrayListUnmanaged = std.ArrayListUnmanaged;
@@ -14,7 +15,30 @@ const query = @import("query.zig");
 const Query = query.Query;
 
 pub const EntityID = struct {
+    const Self = @This();
+
     id: usize,
+
+    pub fn jsonStringify(self: *const Self, jw: anytype) !void {
+        try jw.write(self.id);
+    }
+
+    pub fn jsonParse(
+        allocator: Allocator,
+        source: anytype,
+        options: json.ParseOptions,
+    ) json.ParseError(@TypeOf(source.*))!Self {
+        var self: Self = undefined;
+
+        self.id = try json.innerParse(
+            @TypeOf(self.id),
+            allocator,
+            source,
+            options,
+        );
+
+        return self;
+    }
 };
 
 pub const EntityIdx = struct {
@@ -52,6 +76,89 @@ pub const World = struct {
 
         self.entities.deinit(self.allocator);
         self.archetypes.deinit(self.allocator);
+    }
+
+    pub fn jsonStringify(self: *const Self, jw: anytype) !void {
+        try jw.beginObject();
+
+        try jw.objectField("entity_count");
+        try jw.write(self.entity_count);
+
+        try jw.objectField("entities");
+        try jw.beginArray();
+        var entity_iter = self.entities.iterator();
+        while (entity_iter.next()) |entry| {
+            try jw.beginObject();
+            try jw.objectField("id");
+            try jw.write(entry.key_ptr);
+
+            try jw.objectField("index");
+            try jw.write(entry.value_ptr);
+            try jw.endObject();
+        }
+        try jw.endArray();
+
+        try jw.objectField("archetypes");
+        try jw.write(self.archetypes);
+
+        try jw.endObject();
+    }
+
+    pub fn jsonParse(
+        allocator: Allocator,
+        source: anytype,
+        options: json.ParseOptions,
+    ) json.ParseError(@TypeOf(source.*))!Self {
+        var self = Self{
+            .allocator = allocator,
+            .entity_count = undefined,
+            .entities = .{},
+            .archetypes = undefined,
+        };
+
+        if (try source.next() != .object_begin) return error.UnexpectedToken;
+
+        while (try source.peekNextTokenType() != .object_end) {
+            const object_key = try json.innerParse(
+                []const u8,
+                allocator,
+                source,
+                options,
+            );
+            defer allocator.free(object_key);
+
+            if (std.mem.eql(u8, object_key, "entity_count")) {
+                self.entity_count = try json.innerParse(
+                    @TypeOf(self.entity_count),
+                    allocator,
+                    source,
+                    options,
+                );
+            } else if (std.mem.eql(u8, object_key, "entities")) {
+                const entities = try json.innerParse(
+                    []const struct { id: EntityID, index: EntityIdx },
+                    allocator,
+                    source,
+                    options,
+                );
+
+                try self.entities.ensureTotalCapacity(allocator, @intCast(entities.len));
+                for (entities) |entity| self.entities.putAssumeCapacity(entity.id, entity.index);
+            } else if (std.mem.eql(u8, object_key, "archetypes")) {
+                self.archetypes = try json.innerParse(
+                    @TypeOf(self.archetypes),
+                    allocator,
+                    source,
+                    options,
+                );
+            } else {
+                return error.UnknownField;
+            }
+        }
+
+        if (try source.next() != .object_end) return error.UnexpectedToken;
+
+        return self;
     }
 
     pub fn newEntity(self: *Self, entity: anytype) Allocator.Error!EntityID {
@@ -524,5 +631,32 @@ pub const Test = struct {
         std.sort.insertion(NameAndID, collected.items, {}, NameAndIDSortCtx.lessThan);
 
         try testing.expectEqualSlices(NameAndID, &entities, collected.items);
+    }
+
+    test "JSON serialization/deserialization" {
+        var world = World.init(allocator);
+        defer world.deinit();
+
+        const entities = .{
+            NameAndID.initRaw("test1", 1),
+            NameAndID.initRaw("test2", 2),
+            NameAndID.initRaw("test3", 3),
+            FunkyNameAndID.init(Name.init("test4"), ID.init(4), Funky{ .in_a_good_way = 6 }),
+            FunkyNameAndID.init(Name.init("test5"), ID.init(5), Funky{ .in_a_bad_way = 4 }),
+        };
+
+        var ids: [entities.len]EntityID = undefined;
+        inline for (entities, 0..) |entity, i| ids[i] = try world.newEntity(entity);
+
+        const data = try json.stringifyAlloc(allocator, world, .{ .whitespace = .indent_4 });
+        defer allocator.free(data);
+
+        const world_parsed = try json.parseFromSlice(World, allocator, data, .{});
+        defer world_parsed.deinit();
+
+        inline for (ids, entities) |id, entity| {
+            const value = try world_parsed.value.getEntity(id, @TypeOf(entity));
+            try testing.expectEqual(entity, value);
+        }
     }
 };
