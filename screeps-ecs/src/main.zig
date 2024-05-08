@@ -1,6 +1,6 @@
 const ecs = @import("ecs.zig");
 const query = @import("query.zig");
-const world = @import("world.zig");
+const world = @import("world/mod.zig");
 
 pub const ECS = ecs.ECS;
 pub const Query = query.Query;
@@ -11,7 +11,9 @@ test {
     const std = @import("std");
     std.testing.refAllDeclsRecursive(@import("ecs.zig"));
     std.testing.refAllDeclsRecursive(@import("query.zig"));
-    std.testing.refAllDeclsRecursive(@import("world.zig"));
-    std.testing.refAllDeclsRecursive(@import("typeid.zig"));
-    std.testing.refAllDeclsRecursive(@import("archetype.zig"));
+
+    std.testing.refAllDeclsRecursive(@import("world/mod.zig"));
+    // std.testing.refAllDeclsRecursive(@import("world/world.zig"));
+    // std.testing.refAllDeclsRecursive(@import("world/typeid.zig"));
+    // std.testing.refAllDeclsRecursive(@import("world/archetype.zig"));
 }

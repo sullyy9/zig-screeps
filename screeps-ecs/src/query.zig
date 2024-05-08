@@ -2,12 +2,10 @@ const std = @import("std");
 const Tuple = std.meta.Tuple;
 const assert = std.debug.assert;
 
-const archetype = @import("archetype.zig");
+const World = @import("world/mod.zig").World;
+const archetype = @import("world/mod.zig").archetype;
 const ArchetypeTable = archetype.ArchetypeTable;
 const assertIsComponent = archetype.assertIsComponent;
-
-const World = @import("world.zig").World;
-const ComponentIter = @import("world.zig").ComponentIter;
 
 pub fn assertIsQuery(comptime T: type) void {
     switch (@typeInfo(T)) {

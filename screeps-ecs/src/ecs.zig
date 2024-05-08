@@ -3,7 +3,7 @@ const assert = std.debug.assert;
 const Allocator = std.mem.Allocator;
 const ArrayListUnmanaged = std.ArrayListUnmanaged;
 
-const world = @import("world.zig");
+const world = @import("world/world.zig");
 const World = world.World;
 
 const assertIsQuery = @import("query.zig").assertIsQuery;

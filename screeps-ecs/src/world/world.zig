@@ -11,9 +11,6 @@ const archetype = @import("archetype.zig");
 const ArchetypeTable = archetype.ArchetypeTable;
 const assertIsComponent = archetype.assertIsComponent;
 
-const query = @import("query.zig");
-const Query = query.Query;
-
 pub const EntityID = struct {
     const Self = @This();
 
@@ -459,7 +456,7 @@ pub const Test = struct {
     const allocator = std.testing.allocator;
     const ArrayList = std.ArrayList;
 
-    const components = @import("testing/components.zig");
+    const components = @import("../testing/components.zig");
     const ID = components.ID;
     const Name = components.Name;
     const Funky = components.Funky;
