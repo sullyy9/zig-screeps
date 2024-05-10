@@ -9,7 +9,8 @@ const AutoHashMapUnmanaged = std.AutoHashMapUnmanaged;
 
 const archetype = @import("archetype.zig");
 const ArchetypeTable = archetype.ArchetypeTable;
-const assertIsComponent = archetype.assertIsComponent;
+
+const assertIsComponent = @import("component.zig").assertIsComponent;
 
 pub const EntityID = struct {
     const Self = @This();

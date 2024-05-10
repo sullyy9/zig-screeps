@@ -6,29 +6,7 @@ const StructField = std.builtin.Type.StructField;
 const typeid = @import("typeid.zig");
 const typeID = typeid.typeID;
 
-/// Assert that a type is a valid component.
-pub fn assertIsComponent(comptime Component: type) void {
-    comptime switch (@typeInfo(Component)) {
-        .Type,
-        .Void,
-        .NoReturn,
-        .Pointer,
-        .ComptimeFloat,
-        .ComptimeInt,
-        .Undefined,
-        .Null,
-        .Fn,
-        .Frame,
-        .AnyFrame,
-        .Vector,
-        => @compileError(std.fmt.comptimePrint(
-            "Type '{}' does not fullfill the requirements of Component. " ++
-                "Components may not be of type '{s}'",
-            .{ Component, @tagName(@typeInfo(Component)) },
-        )),
-        else => return,
-    };
-}
+const assertIsComponent = @import("component.zig").assertIsComponent;
 
 pub fn assertIsArchetype(comptime Archetype: type) void {
     comptime switch (@typeInfo(Archetype)) {
