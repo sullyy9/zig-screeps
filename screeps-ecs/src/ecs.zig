@@ -1,77 +1,19 @@
 const std = @import("std");
-const assert = std.debug.assert;
 const Allocator = std.mem.Allocator;
 const ArrayListUnmanaged = std.ArrayListUnmanaged;
 
 const world = @import("world/world.zig");
 const World = world.World;
 
-const assertIsQuery = @import("query.zig").assertIsQuery;
+const system_module = @import("system/mod.zig");
+const SystemRegistry = system_module.Registry;
 
-const System = struct {
-    const Self = @This();
-
-    ptr: *const anyopaque,
-    args: type,
-    info: std.builtin.Type,
-
-    fn init(comptime func: anytype) Self {
-        const args = comptime std.meta.ArgsTuple(@TypeOf(func));
-        inline for (std.meta.fields(args)) |field| assertIsQuery(field.type);
-
-        return Self{
-            .ptr = @ptrCast(&func),
-            .args = args,
-            .info = @typeInfo(@TypeOf(func)),
-        };
-    }
-
-    fn Type(self: *const Self) type {
-        return @Type(self.info);
-    }
-
-    fn call(self: *const Self) void {
-        const func: *const fn () void = @ptrCast(self.ptr);
-        func(1);
-    }
-};
-
-/// This needs to be a seperate object since the list of systems needs to be created at comptime.
-/// TODO: Rather than statically allocating an array could use buidler pattern:
-/// fn addSystem([N]System) -> [N+1]System
-pub const Systems = struct {
-    const Self = @This();
-
-    count: usize,
-    systems: [128]System,
-
-    pub fn init() Self {
-        return Self{
-            .count = 0,
-            .systems = undefined,
-        };
-    }
-
-    pub inline fn addSystem(comptime self: *Self, comptime system: anytype) void {
-        if (@typeInfo(@TypeOf(system)) != .Fn) {
-            @compileError("System must be a function!");
-        }
-
-        if (self.count >= self.systems.len) {
-            @compileError("Too many systems!");
-        }
-
-        self.systems[self.count] = System.init(system);
-        self.count += 1;
-    }
-};
-
-pub fn ECS(comptime systems: Systems) type {
+pub fn ECS(comptime systems: SystemRegistry) type {
     return struct {
         const Self = @This();
 
         world: World,
-        comptime systems: Systems = systems,
+        comptime systems: SystemRegistry = systems,
 
         pub fn init(allocator: Allocator) Self {
             return Self{
@@ -136,7 +78,7 @@ pub const Test = struct {
     }
 
     test "addSystem" {
-        comptime var systems = Systems.init();
+        comptime var systems = SystemRegistry.init();
         comptime systems.addSystem(testSystem);
         comptime systems.addSystem(testIDsAdd10);
 
