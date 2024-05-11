@@ -239,7 +239,13 @@ pub fn IterMut(comptime data: []const type, comptime Filter: type) type {
         }
 
         pub fn next(self: *Self) ?Item {
-            if (self.row < self.columns[0].len) {
+            const current_row_len = if (self.columns.len != 0) brk: {
+                break :brk self.columns[0].len;
+            } else brk: {
+                break :brk self.columns_mut[0].len;
+            };
+
+            if (self.row < current_row_len) {
                 var next_components: Item = undefined;
                 inline for (0..next_components.len) |i| {
                     switch (data_column_lut[i]) {
