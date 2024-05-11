@@ -9,25 +9,40 @@ const archetype = world_module.archetype;
 const ArchetypeTable = archetype.ArchetypeTable;
 const assertIsComponent = world_module.assertIsComponent;
 
-pub fn assertIsQuery(comptime T: type) void {
+pub const Error = error{
+    invalid_type,
+    not_tagged,
+};
+
+pub fn requireIsQuery(comptime T: type) Error!void {
     switch (@typeInfo(T)) {
         .Struct, .Union, .Enum => {},
-        else => @compileError(std.fmt.comptimePrint(
+        else => return Error.invalid_type,
+    }
+
+    if (!@hasDecl(T, "querytag")) return Error.not_tagged;
+}
+
+pub fn isQuery(comptime T: type) bool {
+    return if (requireIsQuery(T)) |_| true else |_| false;
+}
+
+pub fn assertIsQuery(comptime T: type) void {
+    requireIsQuery(T) catch |err| switch (err) {
+        Error.invalid_type => @compileError(std.fmt.comptimePrint(
             "Type '{}' does not fullfill the requirements of Query. " ++
                 "Queries must be of type struct, enum or union. " ++
                 "Type is '{}'",
-            .{ T, T },
+            .{ T, @tagName(@typeInfo(T)) },
         )),
-    }
 
-    if (!@hasDecl(T, "querytag")) {
-        @compileError(std.fmt.comptimePrint(
+        Error.not_tagged => @compileError(std.fmt.comptimePrint(
             "Type '{}' does not fullfill the requirements of Query. " ++
                 "Queries must be contain the declaration 'querytag'. " ++
                 "Type does not contain the declaration 'querytag'",
             .{T},
-        ));
-    }
+        )),
+    };
 }
 
 /// Assert that a type is a valid Query Data type.
