@@ -12,7 +12,8 @@ pub fn requireIsSystemParam(comptime T: type) Error!void {
 }
 
 pub fn isSystemParam(comptime T: type) bool {
-    return if (requireIsSystemParam(T)) |_| true else |_| false;
+    requireIsSystemParam(T) catch return false;
+    return true;
 }
 
 pub fn assertIsSystemParam(comptime T: type) void {

@@ -26,7 +26,8 @@ pub fn requireIsSystem(comptime T: type) Error!void {
 }
 
 pub fn isSystem(comptime T: type) bool {
-    return if (requireIsSystem(T)) true else false;
+    requireIsSystem(T) catch return false;
+    return true;
 }
 
 pub fn assertIsSystem(comptime T: type) void {

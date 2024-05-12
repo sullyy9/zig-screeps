@@ -24,7 +24,8 @@ pub fn requireIsQuery(comptime T: type) Error!void {
 }
 
 pub fn isQuery(comptime T: type) bool {
-    return if (requireIsQuery(T)) |_| true else |_| false;
+    requireIsQuery(T) catch return false;
+    return true;
 }
 
 pub fn assertIsQuery(comptime T: type) void {
