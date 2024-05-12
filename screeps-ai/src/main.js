@@ -29,16 +29,19 @@ const import_memory_length = instance.exports.persistantMemoryLength();
 RawMemory.setActiveSegments([0]);
 
 var module_memory = new Uint8Array(instance.exports.memory.buffer, import_memory_address, import_memory_length);
-var screeps_memory = Uint8Array.from(RawMemory.segments[0], (char) => char.codePointAt(0))
 
-// The persistant memory may sometimes not be ready so don't pass it in if thats the case.
-if (module_memory.length != screeps_memory.length) {
-    console.log("Length mismatch between module and screeps memory:")
-    console.log("Module memory:  ", module_memory.length)
-    console.log("Screeps memory: ", screeps_memory.length)
-    console.log()
-} else {
-    module_memory.set(screeps_memory, 0);
+if (RawMemory.segments[0] != undefined) {
+    let screeps_memory = Uint8Array.from(RawMemory.segments[0], (char) => char.codePointAt(0))
+
+    // The persistant memory may sometimes not be ready so don't pass it in if thats the case.
+    if (module_memory.length != screeps_memory.length) {
+        console.log("Length mismatch between module and screeps memory:")
+        console.log("Module memory:  ", module_memory.length)
+        console.log("Screeps memory: ", screeps_memory.length)
+        console.log()
+    } else {
+        module_memory.set(screeps_memory, 0);
+    }
 }
 
 // Main loop.
