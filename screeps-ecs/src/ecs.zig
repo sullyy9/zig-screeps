@@ -7,6 +7,10 @@ const World = world.World;
 
 const system_module = @import("system/mod.zig");
 const SystemRegistry = system_module.Registry;
+const system_param = system_module.param;
+
+const query_module = @import("query.zig");
+const isQuery = query_module.isQuery;
 
 pub fn ECS(comptime systems: SystemRegistry) type {
     return struct {
@@ -32,7 +36,11 @@ pub fn ECS(comptime systems: SystemRegistry) type {
 
                 var args: system.args = undefined;
                 inline for (&args) |*arg| {
-                    arg.* = @TypeOf(arg.*).init(&self.world);
+                    if (comptime isQuery(@TypeOf(arg.*))) {
+                        arg.* = @TypeOf(arg.*).init(&self.world);
+                    } else if (comptime system_param.isWorldPointer(@TypeOf(arg.*))) {
+                        arg.* = &self.world;
+                    }
                 }
 
                 @call(.auto, func, args);

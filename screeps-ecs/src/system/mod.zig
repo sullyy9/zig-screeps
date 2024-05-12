@@ -1,5 +1,6 @@
 const system = @import("system.zig");
 const registry = @import("registry.zig");
+pub const param = @import("param.zig");
 
 pub const isSystem = system.isSystem;
 pub const assertIsSystem = system.assertIsSystem;

@@ -5,6 +5,7 @@ const system = @import("system/mod.zig");
 
 pub const ECS = ecs.ECS;
 pub const Query = query.Query;
+pub const World = world.World;
 pub const SystemRegistry = system.Registry;
 pub const EntityID = world.EntityID;
 
