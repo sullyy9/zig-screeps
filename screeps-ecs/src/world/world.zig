@@ -7,8 +7,13 @@ const StructField = std.builtin.Type.StructField;
 const ArrayListUnmanaged = std.ArrayListUnmanaged;
 const AutoHashMapUnmanaged = std.AutoHashMapUnmanaged;
 
+const typeid = @import("typeid.zig");
+const typeID = typeid.typeID;
+
 const archetype = @import("archetype.zig");
 const ArchetypeTable = archetype.ArchetypeTable;
+
+const ResourceStorage = @import("resource.zig").ResourceStorage;
 
 const assertIsComponent = @import("component.zig").assertIsComponent;
 
@@ -58,12 +63,15 @@ pub const World = struct {
     entities: AutoHashMapUnmanaged(EntityID, EntityIdx),
     archetypes: ArrayListUnmanaged(ArchetypeTable),
 
+    resources: AutoHashMapUnmanaged(usize, ResourceStorage),
+
     pub fn init(allocator: Allocator) Self {
         return Self{
             .allocator = allocator,
             .entity_count = 0,
             .entities = .{},
             .archetypes = .{},
+            .resources = .{},
         };
     }
 
@@ -72,8 +80,12 @@ pub const World = struct {
             table.deinit(self.allocator);
         }
 
+        var storage_iter = self.resources.valueIterator();
+        while (storage_iter.next()) |storage| storage.deinit(self.allocator);
+
         self.entities.deinit(self.allocator);
         self.archetypes.deinit(self.allocator);
+        self.resources.deinit(self.allocator);
     }
 
     pub fn jsonStringify(self: *const Self, jw: anytype) !void {
@@ -99,6 +111,20 @@ pub const World = struct {
         try jw.objectField("archetypes");
         try jw.write(self.archetypes);
 
+        try jw.objectField("resources");
+        try jw.beginArray();
+        var resource_iter = self.resources.iterator();
+        while (resource_iter.next()) |entry| {
+            try jw.beginObject();
+            try jw.objectField("id");
+            try jw.write(entry.key_ptr);
+
+            try jw.objectField("storage");
+            try jw.write(entry.value_ptr);
+            try jw.endObject();
+        }
+        try jw.endArray();
+
         try jw.endObject();
     }
 
@@ -112,6 +138,7 @@ pub const World = struct {
             .entity_count = undefined,
             .entities = .{},
             .archetypes = undefined,
+            .resources = .{},
         };
 
         if (try source.next() != .object_begin) return error.UnexpectedToken;
@@ -149,6 +176,16 @@ pub const World = struct {
                     source,
                     options,
                 );
+            } else if (std.mem.eql(u8, object_key, "resources")) {
+                const resources = try json.innerParse(
+                    []const struct { id: usize, storage: ResourceStorage },
+                    allocator,
+                    source,
+                    options,
+                );
+
+                try self.resources.ensureTotalCapacity(allocator, @intCast(resources.len));
+                for (resources) |resource| self.resources.putAssumeCapacity(resource.id, resource.storage);
             } else {
                 return error.UnknownField;
             }
@@ -240,6 +277,24 @@ pub const World = struct {
         }
 
         return ComponentIterMut(Components).init(self.archetypes.items);
+    }
+
+    pub fn putResource(self: *Self, resource: anytype) !void {
+        var storage = try ResourceStorage.init(self.allocator, resource);
+        errdefer storage.deinit(self.allocator);
+
+        var old_entry = try self.resources.fetchPut(self.allocator, typeID(@TypeOf(resource)), storage);
+        if (old_entry) |*old| old.value.deinit(self.allocator);
+    }
+
+    pub fn getResource(self: *const Self, comptime Res: type) ?Res {
+        const storage = self.resources.get(comptime typeID(Res)) orelse return null;
+        return storage.as(Res);
+    }
+
+    pub fn getResourcePtr(self: *Self, comptime Res: type) ?*Res {
+        var storage = self.resources.get(comptime typeID(Res)) orelse return null;
+        return storage.asPtr(Res);
     }
 
     fn nextEntityID(self: *Self) EntityID {
@@ -629,6 +684,43 @@ pub const Test = struct {
         std.sort.insertion(NameAndID, collected.items, {}, NameAndIDSortCtx.lessThan);
 
         try testing.expectEqualSlices(NameAndID, &entities, collected.items);
+    }
+
+    test "putResource" {
+        var world = World.init(allocator);
+        defer world.deinit();
+
+        var resource = NameAndID.initRaw("test", 69);
+        try world.putResource(resource);
+        try testing.expectEqual(resource, world.getResource(NameAndID).?);
+
+        resource = NameAndID.initRaw("test2", 42);
+        try world.putResource(resource);
+        try testing.expectEqual(resource, world.getResource(NameAndID).?);
+    }
+
+    test "getResource" {
+        var world = World.init(allocator);
+        defer world.deinit();
+
+        const resource = NameAndID.initRaw("test", 69);
+        try world.putResource(resource);
+
+        try testing.expectEqual(resource, world.getResource(NameAndID).?);
+    }
+
+    test "getResourcePtr" {
+        var world = World.init(allocator);
+        defer world.deinit();
+
+        const resource = NameAndID.initRaw("test", 69);
+        try world.putResource(resource);
+
+        const resource_out = world.getResourcePtr(NameAndID).?;
+        try testing.expectEqual(resource, resource_out.*);
+
+        resource_out.id = ID.init(42);
+        try testing.expectEqual(NameAndID.initRaw("test", 42), world.getResourcePtr(NameAndID).?.*);
     }
 
     test "JSON serialization/deserialization" {

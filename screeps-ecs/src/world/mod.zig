@@ -17,4 +17,5 @@ test {
     std.testing.refAllDeclsRecursive(@import("typeid.zig"));
     std.testing.refAllDeclsRecursive(@import("archetype.zig"));
     std.testing.refAllDeclsRecursive(@import("component.zig"));
+    std.testing.refAllDeclsRecursive(@import("resource.zig"));
 }
