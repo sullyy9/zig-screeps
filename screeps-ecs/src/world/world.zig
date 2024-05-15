@@ -7,15 +7,12 @@ const StructField = std.builtin.Type.StructField;
 const ArrayListUnmanaged = std.ArrayListUnmanaged;
 const AutoHashMapUnmanaged = std.AutoHashMapUnmanaged;
 
-const typeid = @import("typeid.zig");
-const typeID = typeid.typeID;
+const typeID = @import("typeid.zig").typeID;
 
-const archetype = @import("archetype.zig");
-const ArchetypeTable = archetype.ArchetypeTable;
+const ArchetypeTable = @import("components/mod.zig").ArchetypeTable;
+const assertIsComponent = @import("components/mod.zig").assertIsComponent;
 
 const ResourceStorage = @import("resource.zig").ResourceStorage;
-
-const assertIsComponent = @import("component.zig").assertIsComponent;
 
 pub const EntityID = struct {
     const Self = @This();
@@ -76,9 +73,7 @@ pub const World = struct {
     }
 
     pub fn deinit(self: *Self) void {
-        for (self.archetypes.items) |*table| {
-            table.deinit(self.allocator);
-        }
+        for (self.archetypes.items) |*table| table.deinit(self.allocator);
 
         var storage_iter = self.resources.valueIterator();
         while (storage_iter.next()) |storage| storage.deinit(self.allocator);
@@ -221,9 +216,7 @@ pub const World = struct {
         assert(index.table < self.archetypes.items.len);
         const table = self.archetypes.items[index.table];
 
-        if (!table.hasComponentsOf(Archetype)) {
-            return Error.ComponentMissing;
-        }
+        if (!table.hasComponentsOf(Archetype)) return Error.ComponentMissing;
 
         // Build a copy of the entity.
         var entity: Archetype = undefined;
@@ -242,9 +235,7 @@ pub const World = struct {
         assert(index.table < self.archetypes.items.len);
         const table = self.archetypes.items[index.table];
 
-        if (!table.hasComponent(Component)) {
-            return Error.ComponentMissing;
-        }
+        if (!table.hasComponent(Component)) return Error.ComponentMissing;
 
         return table.getComponent(index.row, Component);
     }

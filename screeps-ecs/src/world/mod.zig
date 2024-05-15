@@ -1,21 +1,20 @@
 const world = @import("world.zig");
-const component = @import("component.zig");
+const components = @import("components/mod.zig");
 
-pub const archetype = @import("archetype.zig");
+pub const isComponent = components.isComponent;
+pub const assertIsComponent = components.assertIsComponent;
+pub const requireIsComponent = components.requireIsComponent;
 
-pub const isComponent = component.isComponent;
-pub const assertIsComponent = component.assertIsComponent;
-pub const requireIsComponent = component.requireIsComponent;
+pub const assertIsArchetype = components.assertIsArchetype;
 
-pub const ArchetypeTable = archetype.ArchetypeTable;
 pub const World = world.World;
 pub const EntityID = world.EntityID;
+pub const ArchetypeTable = components.ArchetypeTable;
 
 test {
     const std = @import("std");
     std.testing.refAllDeclsRecursive(@import("world.zig"));
     std.testing.refAllDeclsRecursive(@import("typeid.zig"));
-    std.testing.refAllDeclsRecursive(@import("archetype.zig"));
-    std.testing.refAllDeclsRecursive(@import("component.zig"));
     std.testing.refAllDeclsRecursive(@import("resource.zig"));
+    std.testing.refAllDeclsRecursive(@import("components/mod.zig"));
 }

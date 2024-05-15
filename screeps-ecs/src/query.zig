@@ -4,9 +4,7 @@ const assert = std.debug.assert;
 
 const world_module = @import("world/mod.zig");
 const World = world_module.World;
-
-const archetype = world_module.archetype;
-const ArchetypeTable = archetype.ArchetypeTable;
+const ArchetypeTable = world_module.ArchetypeTable;
 const assertIsComponent = world_module.assertIsComponent;
 
 pub const Error = error{

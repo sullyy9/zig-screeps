@@ -3,137 +3,19 @@ const assert = std.debug.assert;
 const Allocator = std.mem.Allocator;
 const StructField = std.builtin.Type.StructField;
 
-const typeid = @import("typeid.zig");
-const typeID = typeid.typeID;
-
+const typeID = @import("../typeid.zig").typeID;
+const ComponentList = @import("storage.zig").ComponentList;
 const assertIsComponent = @import("component.zig").assertIsComponent;
+const assertIsArchetype = @import("archetype.zig").assertIsArchetype;
 
-pub fn assertIsArchetype(comptime Archetype: type) void {
-    comptime switch (@typeInfo(Archetype)) {
-        .Struct => {
-            for (std.meta.fields(Archetype), 0..) |f1, i| {
-                const field1: StructField = f1;
-                for (std.meta.fields(Archetype), 0..) |f2, j| {
-                    const field2: StructField = f2;
-
-                    if (i == j) continue;
-
-                    if (field1.type == field2.type) {
-                        @compileError(std.fmt.comptimePrint(
-                            "Type '{}' does not fullfill the requirements of Archetype. " ++
-                                "All archetype fields must have unique types. " ++
-                                "Fields '{s}' and '{s}' are both of type '{}'",
-                            .{ Archetype, field1.name, field2.name, field1.type },
-                        ));
-                    }
-                }
-            }
-        },
-        else => @compileError(std.fmt.comptimePrint(
-            "Type '{}' does not fullfill the requirements of Archetype. " ++
-                "Archetypes may only be struct types. " ++
-                "Type was of type '{}'",
-            .{
-                Archetype,
-                @tagName(@typeInfo(Archetype)),
-            },
-        )),
-    };
-}
-
-const Column = struct {
-    const Self = @This();
-
-    type_id: usize,
-    type_size: usize,
-    type_alignment: usize,
-    memory: []u8,
-
-    pub fn initEmpty(Component: type) Self {
-        comptime assertIsComponent(Component);
-
-        return Self{
-            .type_id = typeID(Component),
-            .type_size = @sizeOf(Component),
-            .type_alignment = @alignOf(Component),
-            .memory = &.{},
-        };
-    }
-
-    pub fn initCapacity(allocator: Allocator, Component: type, capacity: usize) Allocator.Error!Self {
-        comptime assertIsComponent(Component);
-
-        return Self{
-            .type_id = typeID(Component),
-            .type_size = @sizeOf(Component),
-            .type_alignment = @alignOf(Component),
-            .memory = try allocator.alloc(u8, @sizeOf(Component) * capacity),
-        };
-    }
-
-    pub fn deinit(self: *Self, allocator: Allocator) void {
-        if (self.memory.len > 0) {
-            allocator.free(self.memory);
-        }
-    }
-
-    pub fn set(self: *Self, index: usize, value: anytype) void {
-        assert(index < self.memory.len);
-        assert(typeID(@TypeOf(value)) == self.type_id);
-
-        const beg = index * self.type_size;
-        const end = beg + self.type_size;
-
-        @memcpy(self.memory[beg..end], std.mem.asBytes(&value));
-    }
-
-    pub fn get(self: *const Self, index: usize, T: type) *const T {
-        assert(index < self.memory.len);
-        assert(typeID(T) == self.type_id);
-
-        const beg = index * self.type_size;
-        const end = beg + self.type_size;
-
-        const bytes = self.memory[beg..end];
-        return @as(*const T, @alignCast(@ptrCast(bytes.ptr)));
-    }
-
-    pub fn getMut(self: *Self, index: usize, T: type) *T {
-        assert(index < self.memory.len);
-        assert(typeID(T) == self.type_id);
-
-        const beg = index * self.type_size;
-        const end = beg + self.type_size;
-
-        const bytes = self.memory[beg..end];
-        return @as(*T, @alignCast(@ptrCast(bytes.ptr)));
-    }
-
-    pub fn asSlice(self: *const Self, comptime T: type) []const T {
-        assert(typeID(T) == self.type_id);
-
-        const ptr = @as([*]const T, @alignCast(@ptrCast(self.memory.ptr)));
-        const len = @divExact(self.memory.len, self.type_size);
-        return ptr[0..len];
-    }
-
-    pub fn asSliceMut(self: *Self, comptime T: type) []T {
-        assert(typeID(T) == self.type_id);
-
-        const ptr = @as([*]T, @alignCast(@ptrCast(self.memory.ptr)));
-        const len = @divExact(self.memory.len, self.type_size);
-        return ptr[0..len];
-    }
-};
-
-/// An archetype can't contain multiple components of the same type.
+/// Table containing entities of a certain archetype.
 pub const ArchetypeTable = struct {
     const Self = @This();
 
     row_len: usize,
     row_capacity: usize,
 
-    columns: []Column,
+    columns: []ComponentList,
 
     /// Initialise an ArchetypeTable for an archetype with no components.
     pub fn initVoid() Self {
@@ -148,11 +30,9 @@ pub const ArchetypeTable = struct {
         comptime assertIsArchetype(Archetype);
 
         const fields: []const StructField = std.meta.fields(Archetype);
-        var columns = try allocator.alloc(Column, fields.len);
+        var columns = try allocator.alloc(ComponentList, fields.len);
 
-        inline for (fields, 0..) |field, i| {
-            columns[i] = Column.initEmpty(field.type);
-        }
+        inline for (fields, 0..) |field, i| columns[i] = ComponentList.initEmpty(field.type);
 
         return Self{
             .row_len = 0,
@@ -162,9 +42,7 @@ pub const ArchetypeTable = struct {
     }
 
     pub fn deinit(self: *Self, allocator: Allocator) void {
-        for (self.columns) |*column| {
-            column.deinit(allocator);
-        }
+        for (self.columns) |*column| column.deinit(allocator);
         allocator.free(self.columns);
     }
 
@@ -238,9 +116,7 @@ pub const ArchetypeTable = struct {
     ///
     pub fn ensureUnusedCapacity(self: *Self, allocator: Allocator, unused: usize) Allocator.Error!void {
         const current = self.row_capacity - self.row_len;
-        if (current >= unused) {
-            return;
-        }
+        if (current >= unused) return;
 
         const extra = unused - current;
         try self.ensureTotalCapacity(allocator, self.row_capacity + extra);
@@ -272,13 +148,13 @@ pub const ArchetypeTable = struct {
         assert(!hasComponent(self, Component));
 
         // Create the new column with each element set to undefined.
-        const new_column = try Column.initCapacity(allocator, Component, self.row_capacity);
+        const new_column = try ComponentList.initCapacity(allocator, Component, self.row_capacity);
 
         // Allocate memory for the new slice of columns and copy over the old ones.
         const old_columns = self.columns;
         defer allocator.free(old_columns);
 
-        self.columns = try allocator.alloc(Column, old_columns.len + 1);
+        self.columns = try allocator.alloc(ComponentList, old_columns.len + 1);
         @memcpy(self.columns[0..old_columns.len], old_columns);
 
         // Copy the new column into the last element of the slice.
@@ -354,7 +230,7 @@ pub const ArchetypeTable = struct {
         return ComponentIterMut(Component).init(self.getComponentSliceMut(Component));
     }
 
-    fn getColumn(self: *const Self, comptime Component: type) *const Column {
+    fn getColumn(self: *const Self, comptime Component: type) *const ComponentList {
         comptime assertIsComponent(Component);
 
         for (self.columns) |*column| {
@@ -366,7 +242,7 @@ pub const ArchetypeTable = struct {
         std.debug.panic("No column for component: {}", .{Component});
     }
 
-    fn getColumnMut(self: *Self, comptime Component: type) *Column {
+    fn getColumnMut(self: *Self, comptime Component: type) *ComponentList {
         comptime assertIsComponent(Component);
 
         for (self.columns) |*column| {
