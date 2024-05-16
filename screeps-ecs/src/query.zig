@@ -263,11 +263,11 @@ pub fn IterMut(comptime data: []const type, comptime Filter: type) type {
             self.row = 1;
 
             inline for (immutable_components, 0..) |Component, i| {
-                self.columns[i] = self.tables[@intCast(self.table)].getComponentSlice(Component);
+                self.columns[i] = self.tables[@intCast(self.table)].getComponentSliceConst(Component);
             }
 
             inline for (mutable_components, 0..) |Component, i| {
-                self.columns_mut[i] = self.tables[@intCast(self.table)].getComponentSliceMut(Component);
+                self.columns_mut[i] = self.tables[@intCast(self.table)].getComponentSlice(Component);
             }
 
             var next_components: Item = undefined;
@@ -325,11 +325,11 @@ pub const Test = struct {
             NameAndID.initRaw("test5", 5),
         };
 
-        _ = try world.newEntity(entities[0]);
-        _ = try world.newEntity(entities[1]);
-        _ = try world.newEntity(entities[2]);
-        _ = try world.newEntity(FunkyNameAndID.init(entities[3].name, entities[3].id, Funky{ .in_a_good_way = 6 }));
-        _ = try world.newEntity(FunkyNameAndID.init(entities[4].name, entities[4].id, Funky{ .in_a_bad_way = 4 }));
+        _ = try world.addEntity(entities[0]);
+        _ = try world.addEntity(entities[1]);
+        _ = try world.addEntity(entities[2]);
+        _ = try world.addEntity(FunkyNameAndID.init(entities[3].name, entities[3].id, Funky{ .in_a_good_way = 6 }));
+        _ = try world.addEntity(FunkyNameAndID.init(entities[4].name, entities[4].id, Funky{ .in_a_bad_way = 4 }));
 
         var query = Query(&.{ *const Name, *const ID }, void).init(&world);
 
@@ -356,11 +356,11 @@ pub const Test = struct {
             NameAndID.initRaw("test5", 5),
         };
 
-        _ = try world.newEntity(entities[0]);
-        _ = try world.newEntity(entities[1]);
-        _ = try world.newEntity(entities[2]);
-        _ = try world.newEntity(FunkyNameAndID.init(entities[3].name, entities[3].id, Funky{ .in_a_good_way = 6 }));
-        _ = try world.newEntity(FunkyNameAndID.init(entities[4].name, entities[4].id, Funky{ .in_a_bad_way = 4 }));
+        _ = try world.addEntity(entities[0]);
+        _ = try world.addEntity(entities[1]);
+        _ = try world.addEntity(entities[2]);
+        _ = try world.addEntity(FunkyNameAndID.init(entities[3].name, entities[3].id, Funky{ .in_a_good_way = 6 }));
+        _ = try world.addEntity(FunkyNameAndID.init(entities[4].name, entities[4].id, Funky{ .in_a_bad_way = 4 }));
 
         var query = Query(&.{ *const Name, *ID }, void).init(&world);
         var iter = query.iterMut();

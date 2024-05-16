@@ -1,4 +1,5 @@
 const std = @import("std");
+const json = std.json;
 const Allocator = std.mem.Allocator;
 const ArrayListUnmanaged = std.ArrayListUnmanaged;
 
@@ -28,6 +29,15 @@ pub fn ECS(comptime systems: SystemRegistry) type {
 
         pub fn deinit(self: *Self) void {
             self.world.deinit();
+        }
+
+        pub fn loadWorld(self: *Self, memory: []const u8) !void {
+            const parsed_world = try json.parseFromSlice(World, self.world.allocator, memory, .{});
+            self.world = parsed_world.value;
+        }
+
+        pub fn saveWorld(self: *Self, writer: anytype) !void {
+            try json.stringify(self.world, .{}, writer);
         }
 
         pub fn tick(self: *Self) void {
@@ -101,18 +111,18 @@ pub const Test = struct {
             NameAndID.initRaw("test5", 5),
         };
 
-        _ = try ecs.world.newEntity(entities[0]);
-        _ = try ecs.world.newEntity(entities[1]);
-        _ = try ecs.world.newEntity(entities[2]);
-        _ = try ecs.world.newEntity(FunkyNameAndID.init(entities[3].name, entities[3].id, Funky{ .in_a_good_way = 6 }));
-        _ = try ecs.world.newEntity(FunkyNameAndID.init(entities[4].name, entities[4].id, Funky{ .in_a_bad_way = 4 }));
+        _ = try ecs.world.addEntity(entities[0]);
+        _ = try ecs.world.addEntity(entities[1]);
+        _ = try ecs.world.addEntity(entities[2]);
+        _ = try ecs.world.addEntity(FunkyNameAndID.init(entities[3].name, entities[3].id, Funky{ .in_a_good_way = 6 }));
+        _ = try ecs.world.addEntity(FunkyNameAndID.init(entities[4].name, entities[4].id, Funky{ .in_a_bad_way = 4 }));
 
         for (&entities) |*ent| ent.id.id += 10;
 
         ecs.tick();
         try testing.expectEqual(1, call_count);
 
-        var iter = ecs.world.iter(&.{ Name, ID });
+        var iter = ecs.world.iterComponentsConst(&.{ Name, ID });
         var collected = ArrayList(NameAndID).init(allocator);
         defer collected.deinit();
         while (iter.next()) |item| try collected.append(NameAndID.init(item[0].*, item[1].*));

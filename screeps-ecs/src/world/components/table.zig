@@ -17,7 +17,7 @@ pub const ArchetypeTable = struct {
 
     columns: []ComponentList,
 
-    /// Initialise an ArchetypeTable for an archetype with no components.
+    /// Create an empty `ArchetypeTable` with no components.
     pub fn initVoid() Self {
         return Self{
             .row_len = 0,
@@ -26,13 +26,23 @@ pub const ArchetypeTable = struct {
         };
     }
 
-    pub fn initEmpty(allocator: Allocator, comptime Archetype: type) Allocator.Error!Self {
-        comptime assertIsArchetype(Archetype);
+    /// Create an empty `ArchetypeTable` for a given `Archetype`.
+    ///
+    /// Asserts that `Arch` is an `Archetype`.
+    ///
+    /// Parameters
+    /// ----------
+    /// - `Arch` : Type of the `Archetype` that will be stored in the table.
+    ///
+    pub fn initEmpty(allocator: Allocator, comptime Arch: type) Allocator.Error!Self {
+        comptime assertIsArchetype(Arch);
 
-        const fields: []const StructField = std.meta.fields(Archetype);
+        const fields: []const StructField = std.meta.fields(Arch);
+
         var columns = try allocator.alloc(ComponentList, fields.len);
+        errdefer allocator.free(columns);
 
-        inline for (fields, 0..) |field, i| columns[i] = ComponentList.initEmpty(field.type);
+        inline for (fields, 0..) |field, i| columns[i] = ComponentList.init(field.type);
 
         return Self{
             .row_len = 0,
@@ -46,46 +56,87 @@ pub const ArchetypeTable = struct {
         allocator.free(self.columns);
     }
 
+    /// Return the number of rows in the table.
     pub fn rows(self: *const Self) usize {
         return self.row_len;
     }
 
-    /// Determine if this table contains a given component.
-    pub fn hasComponent(self: *const Self, comptime Component: type) bool {
-        comptime assertIsComponent(Component);
+    /// Determine if the table contains a column for a given `Component`.
+    ///
+    /// Asserts that `Comp` fullfills the requirements of `Component`.
+    ///
+    /// Parameters
+    /// ----------
+    /// - `Comp` : Type of the `Component`.
+    ///
+    pub fn hasComponent(self: *const Self, comptime Comp: type) bool {
+        comptime assertIsComponent(Comp);
 
         for (self.columns) |column| {
-            if (column.type_id == typeID(Component)) {
-                return true;
-            }
+            if (column.type_id == comptime typeID(Comp)) return true;
         }
 
         return false;
     }
 
-    /// Determine if this table contains all of the archetypes components. Does not determine if the
-    /// table contains additional components not present in the archetype.
-    pub fn hasComponentsOf(self: *const Self, comptime Archetype: type) bool {
-        comptime assertIsArchetype(Archetype);
+    /// Determine if the table contains columns for each `Component` in a given `Archetype`.
+    ///
+    /// Does not determine if the table contains columns for additonal `Components` not in the
+    /// `Archetype`.
+    /// Asserts that `Arch` fullfills the requirements of `Archetype`.
+    ///
+    /// Parameters
+    /// ----------
+    /// - `Arch` : Type of the `Archetype`.
+    ///
+    pub fn hasComponentsOf(self: *const Self, comptime Arch: type) bool {
+        comptime assertIsArchetype(Arch);
 
         // Check that this table has a column for each component.
-        inline for (std.meta.fields(Archetype)) |f| {
+        inline for (std.meta.fields(Arch)) |f| {
             const field: StructField = f;
-            if (!self.hasComponent(field.type)) {
-                return false;
-            }
+            if (!self.hasComponent(field.type)) return false;
         }
 
         return true;
     }
 
-    /// Ensure that the ammount of memory allocated for the table is enough to contain at least the
-    /// given ammount of rows.
+    /// Add a new `Component` to each entity in the table.
+    ///
+    /// The value of the `Compoenent` will be set to `undefined` for each entity.
     ///
     /// Parameters
     /// ----------
-    /// - `self`      : Self
-    /// - `allocator` : Allocator
+    /// - `allocator` : Allocator.
+    /// - `Comp`      : Type of the `Component` to add.
+    ///
+    pub fn addComponent(self: *Self, allocator: Allocator, comptime Comp: type) Allocator.Error!void {
+        comptime assertIsComponent(Comp);
+        assert(!hasComponent(self, Comp));
+
+        // Create the new column with each element set to undefined.
+        var new_column = try ComponentList.initCapacity(allocator, Comp, self.row_capacity);
+        errdefer new_column.deinit(allocator);
+
+        // Allocate memory for the new slice of columns and copy over the old ones.
+        const old_columns = self.columns;
+        defer allocator.free(old_columns);
+
+        self.columns = try allocator.alloc(ComponentList, old_columns.len + 1);
+        @memcpy(self.columns[0..old_columns.len], old_columns);
+
+        // Copy the new column into the last element of the slice.
+        self.columns[self.columns.len - 1] = new_column;
+    }
+
+    /// Ensure that the ammount of memory allocated for the table is enough to contain at least a
+    /// given number of rows.
+    ///
+    /// Asserts that `capacity` is not less than the current number of rows.
+    ///
+    /// Parameters
+    /// ----------
+    /// - `allocator` : Allocator.
     /// - `capacity`  : Minimum number of rows this table should be able to contain. Must not be
     ///                 less than the current table length.
     ///
@@ -105,12 +156,11 @@ pub const ArchetypeTable = struct {
     }
 
     /// Ensure that the ammount of unused memory allocated for the table is enough to contain at
-    /// least the given ammount of rows.
+    /// least a given number of rows.
     ///
     /// Parameters
     /// ----------
-    /// - `self`      : Self
-    /// - `allocator` : Allocator
+    /// - `allocator` : Allocator.
     /// - `unused`    : Minimum number of rows this table should be able to add without
     ///                 reallocation.
     ///
@@ -122,18 +172,27 @@ pub const ArchetypeTable = struct {
         try self.ensureTotalCapacity(allocator, self.row_capacity + extra);
     }
 
-    /// Insert a new row and return it's index.
-    pub fn insertRow(self: *Self, allocator: Allocator, value: anytype) Allocator.Error!usize {
-        comptime assertIsArchetype(@TypeOf(value));
-        assert(self.hasComponentsOf(@TypeOf(value)));
+    /// Add a new entity into the table and return it's index.
+    ///
+    /// Asserts that the type of `entity` fullfills the requirements of `Archetype`.
+    /// Asserts that the table contains each `Component` in the `entity` `Archetype`.
+    ///
+    /// Parameters
+    /// ----------
+    /// - `allocator` : Allocator.
+    /// - `entity`    : Entity to add.
+    ///
+    pub fn addEntity(self: *Self, allocator: Allocator, entity: anytype) Allocator.Error!usize {
+        comptime assertIsArchetype(@TypeOf(entity));
+        assert(self.hasComponentsOf(@TypeOf(entity)));
 
         try self.ensureUnusedCapacity(allocator, 1);
 
-        inline for (std.meta.fields(@TypeOf(value))) |f| {
+        inline for (std.meta.fields(@TypeOf(entity))) |f| {
             const field: StructField = f;
 
-            const column = self.getColumnMut(field.type);
-            column.set(self.row_len, @field(value, field.name));
+            const column = self.getColumnPtr(field.type);
+            column.replace(self.row_len, @field(entity, field.name));
         }
 
         const index = self.row_len;
@@ -141,96 +200,119 @@ pub const ArchetypeTable = struct {
         return index;
     }
 
-    /// Add a new component to the archetype this table covers. The value of the component for every
-    /// row will be undefined.
-    pub fn addComponent(self: *Self, allocator: Allocator, comptime Component: type) Allocator.Error!void {
-        comptime assertIsComponent(Component);
-        assert(!hasComponent(self, Component));
-
-        // Create the new column with each element set to undefined.
-        const new_column = try ComponentList.initCapacity(allocator, Component, self.row_capacity);
-
-        // Allocate memory for the new slice of columns and copy over the old ones.
-        const old_columns = self.columns;
-        defer allocator.free(old_columns);
-
-        self.columns = try allocator.alloc(ComponentList, old_columns.len + 1);
-        @memcpy(self.columns[0..old_columns.len], old_columns);
-
-        // Copy the new column into the last element of the slice.
-        self.columns[self.columns.len - 1] = new_column;
-    }
-
-    /// Set the value of a component on a given row.
+    /// Set the value of a `Component` in an enity given its row.
+    ///
+    /// Asserts that `row` is contained within the table.
+    /// Asserts that the type of `value` fullfills the requirements of `Component`.
+    ///
+    /// Parameters
+    /// ----------
+    /// - `row`   : Row of the entity to modify.
+    /// - `value` : Value to set the `Component` to.
+    ///
     pub fn setComponent(self: *Self, row: usize, value: anytype) void {
         comptime assertIsComponent(@TypeOf(value));
         assert(row < self.row_len);
 
         for (self.columns) |*column| {
             if (column.type_id == typeID(@TypeOf(value))) {
-                column.set(row, value);
+                column.replace(row, value);
                 return;
             }
         }
     }
 
-    /// Get an immutable pointer to a component on a given row.
-    pub fn getComponent(self: *const Self, row: usize, comptime Component: type) *const Component {
-        comptime assertIsComponent(Component);
+    /// Get a pointer to an entities `Component` given its row.
+    ///
+    /// Asserts that `row` is contained within the table.
+    /// Asserts that `Comp` fullfills the requirements of `Component`.
+    /// Panics if the table doesn't contain `Components` of type `Comp`.
+    ///
+    /// Parameters
+    /// ----------
+    /// - `row`  : Row of the entity.
+    /// - `Comp` : Type of the `Component`.
+    ///
+    pub fn getComponentPtr(self: *Self, row: usize, comptime Comp: type) *Comp {
+        comptime assertIsComponent(Comp);
         assert(row < self.row_len);
 
         for (self.columns) |*column| {
-            if (column.type_id == typeID(Component)) {
-                return column.get(row, Component);
+            if (column.type_id == typeID(Comp)) {
+                return column.getPtr(row, Comp);
             }
         }
 
-        std.debug.panic("Table does not contain component: {}", .{Component});
+        std.debug.panic("Table does not contain component: {}", .{Comp});
     }
 
-    /// Get an mutable pointer to a component on a given row.
-    pub fn getComponentMut(self: *Self, row: usize, comptime Component: type) *Component {
-        comptime assertIsComponent(Component);
+    /// Get a const pointer to an entities `Component` given its row.
+    ///
+    /// Asserts that `row` is contained within the table.
+    /// Asserts that `Comp` fullfills the requirements of `Component`.
+    /// Panics if the table doesn't contain `Components` of type `Comp`.
+    ///
+    /// Parameters
+    /// ----------
+    /// - `row`  : Row of the entity.
+    /// - `Comp` : Type of the `Component`.
+    ///
+    pub fn getComponentPtrConst(self: *const Self, row: usize, comptime Comp: type) *const Comp {
+        comptime assertIsComponent(Comp);
         assert(row < self.row_len);
 
         for (self.columns) |*column| {
-            if (column.type_id == typeID(Component)) {
-                return column.getMut(row, Component);
+            if (column.type_id == typeID(Comp)) {
+                return column.getPtrConst(row, Comp);
             }
         }
 
-        std.debug.panic("Table does not contain component: {}", .{Component});
+        std.debug.panic("Table does not contain component: {}", .{Comp});
     }
 
-    /// Obtain an immutable slice of all values of a given component.
-    pub fn getComponentSlice(self: *const Self, comptime Component: type) []const Component {
+    /// Get a slice over a given `Component` for all entities.
+    ///
+    /// Asserts that `Comp` fullfills the requirements of `Component`.
+    ///
+    /// Parameters
+    /// ----------
+    /// - `Comp` : Type of the `Component`.
+    ///
+    pub fn getComponentSlice(self: *Self, comptime Comp: type) []Comp {
+        comptime assertIsComponent(Comp);
+
+        const column = self.getColumnPtr(Comp);
+        return column.asSlice(Comp);
+    }
+
+    /// Get a const slice over a given `Component` for all entities.
+    ///
+    /// Asserts that `Comp` fullfills the requirements of `Component`.
+    ///
+    /// Parameters
+    /// ----------
+    /// - `Comp` : Type of the `Component`.
+    ///
+    pub fn getComponentSliceConst(self: *const Self, comptime Component: type) []const Component {
         comptime assertIsComponent(Component);
 
-        const column = self.getColumn(Component);
-        return column.asSlice(Component);
+        const column = self.getColumnPtrConst(Component);
+        return column.asSliceConst(Component);
     }
 
-    /// Obtain a mutable slice of all values of a given component.
-    pub fn getComponentSliceMut(self: *Self, comptime Component: type) []Component {
-        comptime assertIsComponent(Component);
-
-        const column = self.getColumnMut(Component);
-        return column.asSliceMut(Component);
-    }
-
-    /// Obtain an iterator over immutable values of a given component.
-    pub fn iterComponents(self: *const Self, comptime Component: type) ComponentIter(Component) {
+    /// Obtain an iterator over mutable values of a given component.
+    pub fn iterComponents(self: *Self, comptime Component: type) ComponentIter(Component) {
         comptime assertIsComponent(Component);
         return ComponentIter(Component).init(self.getComponentSlice(Component));
     }
 
-    /// Obtain an iterator over mutable values of a given component.
-    pub fn iterComponentsMut(self: *Self, comptime Component: type) ComponentIterMut(Component) {
+    /// Obtain an iterator over immutable values of a given component.
+    pub fn iterComponentsConst(self: *const Self, comptime Component: type) ComponentIterConst(Component) {
         comptime assertIsComponent(Component);
-        return ComponentIterMut(Component).init(self.getComponentSliceMut(Component));
+        return ComponentIterConst(Component).init(self.getComponentSliceConst(Component));
     }
 
-    fn getColumn(self: *const Self, comptime Component: type) *const ComponentList {
+    fn getColumnPtr(self: *Self, comptime Component: type) *ComponentList {
         comptime assertIsComponent(Component);
 
         for (self.columns) |*column| {
@@ -242,7 +324,7 @@ pub const ArchetypeTable = struct {
         std.debug.panic("No column for component: {}", .{Component});
     }
 
-    fn getColumnMut(self: *Self, comptime Component: type) *ComponentList {
+    fn getColumnPtrConst(self: *const Self, comptime Component: type) *const ComponentList {
         comptime assertIsComponent(Component);
 
         for (self.columns) |*column| {
@@ -255,7 +337,7 @@ pub const ArchetypeTable = struct {
     }
 };
 
-pub fn ComponentIter(comptime Component: type) type {
+pub fn ComponentIterConst(comptime Component: type) type {
     assertIsComponent(Component);
 
     return struct {
@@ -283,7 +365,7 @@ pub fn ComponentIter(comptime Component: type) type {
     };
 }
 
-pub fn ComponentIterMut(comptime Component: type) type {
+pub fn ComponentIter(comptime Component: type) type {
     return struct {
         const Self = @This();
 
@@ -313,64 +395,12 @@ pub const Test = struct {
     const testing = std.testing;
     const allocator = std.testing.allocator;
 
-    const Name = struct {
-        const Self = @This();
-
-        name: []const u8,
-
-        pub fn init(name: []const u8) Self {
-            return Self{ .name = name };
-        }
-    };
-
-    const ID = struct {
-        const Self = @This();
-
-        big_id: u64,
-        smol_id: u8,
-
-        pub fn init(big: u64, smol: u8) Self {
-            return Self{ .big_id = big, .smol_id = smol };
-        }
-    };
-
-    const Funky = struct {
-        const Self = @This();
-
-        in_a_good_way: bool,
-        in_a_bad_way: bool,
-
-        pub fn initInAGoodWay() Self {
-            return Self{ .in_a_bad_way = false, .in_a_good_way = true };
-        }
-
-        pub fn initInABadWay() Self {
-            return Self{ .in_a_bad_way = true, .in_a_good_way = false };
-        }
-    };
-
-    const NameAndID = struct {
-        const Self = @This();
-
-        name: Name,
-        id: ID,
-
-        pub fn init(name: Name, id: ID) Self {
-            return Self{ .name = name, .id = id };
-        }
-    };
-
-    const FunkyNameAndID = struct {
-        const Self = @This();
-
-        name: Name,
-        id: ID,
-        funky: Funky,
-
-        pub fn init(name: Name, id: ID, funky: Funky) Self {
-            return Self{ .name = name, .id = id, .funky = funky };
-        }
-    };
+    const components = @import("../../testing/components.zig");
+    const ID = components.ID;
+    const Name = components.Name;
+    const Funky = components.Funky;
+    const NameAndID = components.NameAndID;
+    const FunkyNameAndID = components.FunkyNameAndID;
 
     test "hasComponent" {
         var arch = try ArchetypeTable.initEmpty(allocator, NameAndID);
@@ -392,6 +422,17 @@ pub const Test = struct {
 
         try testing.expect(arch.hasComponentsOf(NameAndID));
         try testing.expect(arch.hasComponentsOf(FunkyNameAndID));
+    }
+
+    test "addComponent" {
+        var arch = ArchetypeTable.initVoid();
+        defer arch.deinit(allocator);
+
+        try arch.addComponent(allocator, Name);
+        try testing.expectEqual(arch.columns.len, 1);
+
+        try arch.addComponent(allocator, ID);
+        try testing.expectEqual(arch.columns.len, 2);
     }
 
     test "ensureTotalCapacity" {
@@ -419,7 +460,7 @@ pub const Test = struct {
             try testing.expect(column.memory.len >= column.type_size * unused_capacity);
         }
 
-        _ = try arch.insertRow(allocator, NameAndID.init(Name.init("test"), ID.init(69, 42)));
+        _ = try arch.addEntity(allocator, NameAndID.initRaw("test", 69));
         try arch.ensureUnusedCapacity(allocator, unused_capacity);
 
         for (arch.columns) |column| {
@@ -427,50 +468,39 @@ pub const Test = struct {
         }
     }
 
-    test "addComponent" {
-        var arch = ArchetypeTable.initVoid();
-        defer arch.deinit(allocator);
-
-        try arch.addComponent(allocator, Name);
-        try testing.expectEqual(arch.columns.len, 1);
-
-        try arch.addComponent(allocator, ID);
-        try testing.expectEqual(arch.columns.len, 2);
-    }
-
-    test "insertRow" {
+    test "addEntity" {
         var arch = try ArchetypeTable.initEmpty(allocator, NameAndID);
         defer arch.deinit(allocator);
 
-        const index = try arch.insertRow(allocator, NameAndID.init(Name.init("test"), ID.init(69, 42)));
-        try testing.expectEqual(Name.init("test"), arch.getComponent(index, Name).*);
-        try testing.expectEqual(ID.init(69, 42), arch.getComponent(index, ID).*);
+        const index = try arch.addEntity(allocator, NameAndID.initRaw("test", 69));
+        try testing.expectEqual(Name.init("test"), arch.getComponentPtrConst(index, Name).*);
+        try testing.expectEqual(ID.init(69), arch.getComponentPtrConst(index, ID).*);
 
-        const index2 = try arch.insertRow(allocator, NameAndID.init(Name.init("test2"), ID.init(96, 24)));
-        try testing.expectEqual(Name.init("test2"), arch.getComponent(index2, Name).*);
-        try testing.expectEqual(ID.init(96, 24), arch.getComponent(index2, ID).*);
+        const index2 = try arch.addEntity(allocator, NameAndID.initRaw("test2", 42));
+        try testing.expectEqual(Name.init("test2"), arch.getComponentPtrConst(index2, Name).*);
+        try testing.expectEqual(ID.init(42), arch.getComponentPtrConst(index2, ID).*);
     }
 
-    test "set" {
+    test "setComponent" {
         var arch = try ArchetypeTable.initEmpty(allocator, NameAndID);
         defer arch.deinit(allocator);
 
         const capacity = 5;
         try arch.ensureTotalCapacity(allocator, capacity);
-        _ = try arch.insertRow(allocator, NameAndID.init(Name.init("test"), ID.init(69, 42)));
+        _ = try arch.addEntity(allocator, NameAndID.initRaw("test", 69));
 
         arch.setComponent(0, Name.init("test name"));
 
-        try testing.expectEqual(Name.init("test name"), arch.getComponent(0, Name).*);
+        try testing.expectEqual(Name.init("test name"), arch.getComponentPtrConst(0, Name).*);
     }
 
     test "getComponentSlice" {
         var arch = try ArchetypeTable.initEmpty(allocator, NameAndID);
         defer arch.deinit(allocator);
 
-        _ = try arch.insertRow(allocator, NameAndID.init(Name.init("test1"), ID.init(69, 42)));
-        _ = try arch.insertRow(allocator, NameAndID.init(Name.init("test2"), ID.init(70, 43)));
-        _ = try arch.insertRow(allocator, NameAndID.init(Name.init("test3"), ID.init(71, 44)));
+        _ = try arch.addEntity(allocator, NameAndID.initRaw("test1", 69));
+        _ = try arch.addEntity(allocator, NameAndID.initRaw("test2", 70));
+        _ = try arch.addEntity(allocator, NameAndID.initRaw("test3", 71));
 
         const names = arch.getComponentSlice(Name);
         const ids = arch.getComponentSlice(ID);
@@ -479,47 +509,47 @@ pub const Test = struct {
         try testing.expectEqual(Name.init("test2"), names[1]);
         try testing.expectEqual(Name.init("test3"), names[2]);
 
-        try testing.expectEqual(ID.init(69, 42), ids[0]);
-        try testing.expectEqual(ID.init(70, 43), ids[1]);
-        try testing.expectEqual(ID.init(71, 44), ids[2]);
-
-        try testing.expectEqual(3, names.len);
-        try testing.expectEqual(3, ids.len);
-    }
-
-    test "getComponentSliceMut" {
-        var arch = try ArchetypeTable.initEmpty(allocator, NameAndID);
-        defer arch.deinit(allocator);
-
-        _ = try arch.insertRow(allocator, NameAndID.init(Name.init("test1"), ID.init(69, 42)));
-        _ = try arch.insertRow(allocator, NameAndID.init(Name.init("test2"), ID.init(70, 43)));
-        _ = try arch.insertRow(allocator, NameAndID.init(Name.init("test3"), ID.init(71, 44)));
-
-        const names = arch.getComponentSliceMut(Name);
-        const ids = arch.getComponentSliceMut(ID);
-
-        try testing.expectEqual(Name.init("test1"), names[0]);
-        try testing.expectEqual(Name.init("test2"), names[1]);
-        try testing.expectEqual(Name.init("test3"), names[2]);
-
-        try testing.expectEqual(ID.init(69, 42), ids[0]);
-        try testing.expectEqual(ID.init(70, 43), ids[1]);
-        try testing.expectEqual(ID.init(71, 44), ids[2]);
+        try testing.expectEqual(ID.init(69), ids[0]);
+        try testing.expectEqual(ID.init(70), ids[1]);
+        try testing.expectEqual(ID.init(71), ids[2]);
 
         try testing.expectEqual(3, names.len);
         try testing.expectEqual(3, ids.len);
 
         names[1] = Name.init("test4");
-        try testing.expectEqual(Name.init("test4"), arch.getComponent(1, Name).*);
+        try testing.expectEqual(Name.init("test4"), arch.getComponentPtrConst(1, Name).*);
     }
 
-    test "iter" {
+    test "getComponentSliceConst" {
         var arch = try ArchetypeTable.initEmpty(allocator, NameAndID);
         defer arch.deinit(allocator);
 
-        _ = try arch.insertRow(allocator, NameAndID.init(Name.init("test1"), ID.init(69, 42)));
-        _ = try arch.insertRow(allocator, NameAndID.init(Name.init("test2"), ID.init(70, 43)));
-        _ = try arch.insertRow(allocator, NameAndID.init(Name.init("test3"), ID.init(71, 44)));
+        _ = try arch.addEntity(allocator, NameAndID.initRaw("test1", 69));
+        _ = try arch.addEntity(allocator, NameAndID.initRaw("test2", 70));
+        _ = try arch.addEntity(allocator, NameAndID.initRaw("test3", 71));
+
+        const names = arch.getComponentSliceConst(Name);
+        const ids = arch.getComponentSliceConst(ID);
+
+        try testing.expectEqual(Name.init("test1"), names[0]);
+        try testing.expectEqual(Name.init("test2"), names[1]);
+        try testing.expectEqual(Name.init("test3"), names[2]);
+
+        try testing.expectEqual(ID.init(69), ids[0]);
+        try testing.expectEqual(ID.init(70), ids[1]);
+        try testing.expectEqual(ID.init(71), ids[2]);
+
+        try testing.expectEqual(3, names.len);
+        try testing.expectEqual(3, ids.len);
+    }
+
+    test "iterComponents" {
+        var arch = try ArchetypeTable.initEmpty(allocator, NameAndID);
+        defer arch.deinit(allocator);
+
+        _ = try arch.addEntity(allocator, NameAndID.initRaw("test1", 69));
+        _ = try arch.addEntity(allocator, NameAndID.initRaw("test2", 70));
+        _ = try arch.addEntity(allocator, NameAndID.initRaw("test3", 71));
 
         var names = arch.iterComponents(Name);
         var ids = arch.iterComponents(ID);
@@ -529,36 +559,36 @@ pub const Test = struct {
         try testing.expectEqual(Name.init("test3"), names.next().?.*);
         try testing.expect(null == names.next());
 
-        try testing.expectEqual(ID.init(69, 42), ids.next().?.*);
-        try testing.expectEqual(ID.init(70, 43), ids.next().?.*);
-        try testing.expectEqual(ID.init(71, 44), ids.next().?.*);
+        try testing.expectEqual(ID.init(69), ids.next().?.*);
+        try testing.expectEqual(ID.init(70), ids.next().?.*);
+        try testing.expectEqual(ID.init(71), ids.next().?.*);
         try testing.expect(null == ids.next());
+
+        var names2 = arch.iterComponents(Name);
+        _ = names2.next();
+        names2.next().?.* = Name.init("test4");
+        try testing.expectEqual(Name.init("test4"), arch.getComponentPtrConst(1, Name).*);
     }
 
-    test "iterMut" {
+    test "iterComponentsConst" {
         var arch = try ArchetypeTable.initEmpty(allocator, NameAndID);
         defer arch.deinit(allocator);
 
-        _ = try arch.insertRow(allocator, NameAndID.init(Name.init("test1"), ID.init(69, 42)));
-        _ = try arch.insertRow(allocator, NameAndID.init(Name.init("test2"), ID.init(70, 43)));
-        _ = try arch.insertRow(allocator, NameAndID.init(Name.init("test3"), ID.init(71, 44)));
+        _ = try arch.addEntity(allocator, NameAndID.initRaw("test1", 69));
+        _ = try arch.addEntity(allocator, NameAndID.initRaw("test2", 70));
+        _ = try arch.addEntity(allocator, NameAndID.initRaw("test3", 71));
 
-        var names = arch.iterComponentsMut(Name);
-        var ids = arch.iterComponentsMut(ID);
+        var names = arch.iterComponentsConst(Name);
+        var ids = arch.iterComponentsConst(ID);
 
         try testing.expectEqual(Name.init("test1"), names.next().?.*);
         try testing.expectEqual(Name.init("test2"), names.next().?.*);
         try testing.expectEqual(Name.init("test3"), names.next().?.*);
         try testing.expect(null == names.next());
 
-        try testing.expectEqual(ID.init(69, 42), ids.next().?.*);
-        try testing.expectEqual(ID.init(70, 43), ids.next().?.*);
-        try testing.expectEqual(ID.init(71, 44), ids.next().?.*);
+        try testing.expectEqual(ID.init(69), ids.next().?.*);
+        try testing.expectEqual(ID.init(70), ids.next().?.*);
+        try testing.expectEqual(ID.init(71), ids.next().?.*);
         try testing.expect(null == ids.next());
-
-        var names2 = arch.iterComponentsMut(Name);
-        _ = names2.next();
-        names2.next().?.* = Name.init("test4");
-        try testing.expectEqual(Name.init("test4"), arch.getComponent(1, Name).*);
     }
 };
