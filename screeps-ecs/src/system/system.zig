@@ -47,8 +47,8 @@ pub fn assertIsSystem(comptime T: type) void {
         Error.invalid_return_type => @compileError(std.fmt.comptimePrint(
             "Type '{}' does not fullfill the requirements of System. " ++
                 "System return type must be 'void'. " ++
-                "Return type is '{}'",
-            .{ T, @typeInfo(T).Fn.return_type },
+                "Return type is '{s}'",
+            .{ T, @typeName(@typeInfo(T).Fn.return_type) },
         )),
     };
 }
