@@ -46,6 +46,12 @@ pub const ResourceStorage = struct {
         assert(typeID(T) == self.type_id);
         return @as(*T, @alignCast(@ptrCast(self.memory.ptr)));
     }
+
+    /// Obtain a const pointer to the object contained within.
+    pub fn asPtrConst(self: *Self, comptime T: type) *const T {
+        assert(typeID(T) == self.type_id);
+        return @as(*const T, @alignCast(@ptrCast(self.memory.ptr)));
+    }
 };
 
 pub const Test = struct {

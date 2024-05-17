@@ -269,6 +269,11 @@ pub const World = struct {
         return storage.asPtr(Res);
     }
 
+    pub fn getResourcePtrConst(self: *Self, comptime Res: type) ?*const Res {
+        var storage = self.resources.get(comptime typeID(Res)) orelse return null;
+        return storage.asPtrConst(Res);
+    }
+
     fn nextEntityID(self: *Self) EntityID {
         const id = EntityID{ .id = self.entity_count };
         self.entity_count += 1;
