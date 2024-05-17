@@ -2,11 +2,11 @@ const std = @import("std");
 const assert = std.debug.assert;
 const Allocator = std.mem.Allocator;
 
-const typeid = @import("typeid.zig");
+const typeid = @import("../typeid.zig");
 const typeID = typeid.typeID;
 
 /// Type errased storage for resources.
-pub const ResourceStorage = struct {
+pub const Storage = struct {
     const Self = @This();
 
     type_id: usize,
@@ -58,7 +58,7 @@ pub const Test = struct {
     const testing = std.testing;
     const allocator = std.testing.allocator;
 
-    const components = @import("../testing/components.zig");
+    const components = @import("../../testing/components.zig");
     const ID = components.ID;
     const Name = components.Name;
     const Funky = components.Funky;
@@ -67,7 +67,7 @@ pub const Test = struct {
 
     test "as" {
         const input = NameAndID.init(Name.init("test"), ID.init(69));
-        var storage = try ResourceStorage.init(allocator, input);
+        var storage = try Storage.init(allocator, input);
         defer storage.deinit(allocator);
 
         try testing.expectEqual(input, storage.as(NameAndID));
@@ -75,7 +75,7 @@ pub const Test = struct {
 
     test "asPtr" {
         const input = NameAndID.init(Name.init("test"), ID.init(69));
-        var storage = try ResourceStorage.init(allocator, input);
+        var storage = try Storage.init(allocator, input);
         defer storage.deinit(allocator);
 
         try testing.expectEqual(input, storage.asPtr(NameAndID).*);

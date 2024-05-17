@@ -15,6 +15,6 @@ test {
     const std = @import("std");
     std.testing.refAllDeclsRecursive(@import("world.zig"));
     std.testing.refAllDeclsRecursive(@import("typeid.zig"));
-    std.testing.refAllDeclsRecursive(@import("resource.zig"));
     std.testing.refAllDeclsRecursive(@import("components/mod.zig"));
+    std.testing.refAllDeclsRecursive(@import("resources/mod.zig"));
 }

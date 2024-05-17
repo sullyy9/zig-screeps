@@ -12,7 +12,7 @@ const typeID = @import("typeid.zig").typeID;
 const ArchetypeTable = @import("components/mod.zig").ArchetypeTable;
 const assertIsComponent = @import("components/mod.zig").assertIsComponent;
 
-const ResourceStorage = @import("resource.zig").ResourceStorage;
+const ResourceStorage = @import("resources/mod.zig").ResourceStorage;
 
 pub const EntityID = struct {
     const Self = @This();
