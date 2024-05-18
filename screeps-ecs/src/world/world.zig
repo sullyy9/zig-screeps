@@ -13,6 +13,7 @@ const ArchetypeTable = @import("components/mod.zig").ArchetypeTable;
 const assertIsComponent = @import("components/mod.zig").assertIsComponent;
 
 const ResourceStorage = @import("resources/mod.zig").ResourceStorage;
+const assertIsResource = @import("resources/mod.zig").assertIsResource;
 
 pub const EntityID = struct {
     const Self = @This();
@@ -251,7 +252,17 @@ pub const World = struct {
         return ComponentIterConst(components).init(self.archetypes.items);
     }
 
+    /// Insert a `Resource` or overwrite it's value if it already exists.
+    ///
+    /// Asserts that the type of `resource` is a `Resource`.
+    ///
+    /// Parameters
+    /// ----------
+    /// - `resource` : resource to insert.
+    ///
     pub fn putResource(self: *Self, resource: anytype) !void {
+        assertIsResource(@TypeOf(resource));
+
         var storage = try ResourceStorage.init(self.allocator, resource);
         errdefer storage.deinit(self.allocator);
 
@@ -259,17 +270,47 @@ pub const World = struct {
         if (old_entry) |*old| old.value.deinit(self.allocator);
     }
 
+    /// Get the value of a `Resource`.
+    ///
+    /// Asserts that `Res` is a `Resource`.
+    ///
+    /// Parameters
+    /// ----------
+    /// - `Res` : Type of the `Resource`.
+    ///
     pub fn getResource(self: *const Self, comptime Res: type) ?Res {
+        assertIsResource(Res);
+
         const storage = self.resources.get(comptime typeID(Res)) orelse return null;
         return storage.as(Res);
     }
 
+    /// Get a pointer to a `Resource`.
+    ///
+    /// Asserts that `Res` is a `Resource`.
+    ///
+    /// Parameters
+    /// ----------
+    /// - `Res` : Type of the `Resource`.
+    ///
     pub fn getResourcePtr(self: *Self, comptime Res: type) ?*Res {
+        assertIsResource(Res);
+
         var storage = self.resources.get(comptime typeID(Res)) orelse return null;
         return storage.asPtr(Res);
     }
 
+    /// Get a const pointer to a `Resource`.
+    ///
+    /// Asserts that `Res` is a `Resource`.
+    ///
+    /// Parameters
+    /// ----------
+    /// - `Res` : Type of the `Resource`.
+    ///
     pub fn getResourcePtrConst(self: *Self, comptime Res: type) ?*const Res {
+        assertIsResource(Res);
+
         var storage = self.resources.get(comptime typeID(Res)) orelse return null;
         return storage.asPtrConst(Res);
     }
@@ -479,10 +520,11 @@ pub const Test = struct {
     const allocator = std.testing.allocator;
     const ArrayList = std.ArrayList;
 
-    const components = @import("../testing/components.zig");
+    const components = @import("../testing/mod.zig");
     const ID = components.ID;
     const Name = components.Name;
-    const Funky = components.Funky;
+    const Counter = components.Counter;
+    const Movement = components.Movement;
     const NameAndID = components.NameAndID;
     const FunkyNameAndID = components.FunkyNameAndID;
 
@@ -544,8 +586,8 @@ pub const Test = struct {
         _ = try world.addEntity(NameAndID.init(names[0], ID.init(1)));
         _ = try world.addEntity(NameAndID.init(names[1], ID.init(2)));
         _ = try world.addEntity(NameAndID.init(names[2], ID.init(3)));
-        _ = try world.addEntity(FunkyNameAndID.init(names[3], ID.init(4), Funky{ .in_a_good_way = 6 }));
-        _ = try world.addEntity(FunkyNameAndID.init(names[4], ID.init(5), Funky{ .in_a_bad_way = 4 }));
+        _ = try world.addEntity(FunkyNameAndID.init(names[3], ID.init(4), .{ .in_a_good_way = 6 }));
+        _ = try world.addEntity(FunkyNameAndID.init(names[4], ID.init(5), .{ .in_a_bad_way = 4 }));
 
         var iter = world.iterComponentsConst(&.{Name});
 
@@ -574,8 +616,8 @@ pub const Test = struct {
         _ = try world.addEntity(NameAndID.init(names[0], ID.init(1)));
         _ = try world.addEntity(NameAndID.init(names[1], ID.init(2)));
         _ = try world.addEntity(NameAndID.init(names[2], ID.init(3)));
-        _ = try world.addEntity(FunkyNameAndID.init(names[3], ID.init(4), Funky{ .in_a_good_way = 6 }));
-        _ = try world.addEntity(FunkyNameAndID.init(names[4], ID.init(5), Funky{ .in_a_bad_way = 4 }));
+        _ = try world.addEntity(FunkyNameAndID.init(names[3], ID.init(4), .{ .in_a_good_way = 6 }));
+        _ = try world.addEntity(FunkyNameAndID.init(names[4], ID.init(5), .{ .in_a_bad_way = 4 }));
 
         var iter = world.iterComponents(&.{Name});
 
@@ -604,8 +646,8 @@ pub const Test = struct {
         _ = try world.addEntity(entities[0]);
         _ = try world.addEntity(entities[1]);
         _ = try world.addEntity(entities[2]);
-        _ = try world.addEntity(FunkyNameAndID.init(entities[3].name, entities[3].id, Funky{ .in_a_good_way = 6 }));
-        _ = try world.addEntity(FunkyNameAndID.init(entities[4].name, entities[4].id, Funky{ .in_a_bad_way = 4 }));
+        _ = try world.addEntity(FunkyNameAndID.fromNameAndID(entities[3], .{ .in_a_good_way = 6 }));
+        _ = try world.addEntity(FunkyNameAndID.fromNameAndID(entities[4], .{ .in_a_bad_way = 4 }));
 
         var iter = world.iterComponentsConst(&.{ Name, ID });
 
@@ -634,8 +676,8 @@ pub const Test = struct {
         _ = try world.addEntity(entities[0]);
         _ = try world.addEntity(entities[1]);
         _ = try world.addEntity(entities[2]);
-        _ = try world.addEntity(FunkyNameAndID.init(entities[3].name, entities[3].id, Funky{ .in_a_good_way = 6 }));
-        _ = try world.addEntity(FunkyNameAndID.init(entities[4].name, entities[4].id, Funky{ .in_a_bad_way = 4 }));
+        _ = try world.addEntity(FunkyNameAndID.fromNameAndID(entities[3], .{ .in_a_good_way = 6 }));
+        _ = try world.addEntity(FunkyNameAndID.fromNameAndID(entities[4], .{ .in_a_bad_way = 4 }));
 
         var iter = world.iterComponents(&.{ Name, ID });
         while (iter.next()) |item| item[1].id += 10;
@@ -657,37 +699,37 @@ pub const Test = struct {
         var world = World.init(allocator);
         defer world.deinit();
 
-        var resource = NameAndID.initRaw("test", 69);
+        var resource = Movement{ .walking = 5 };
         try world.putResource(resource);
-        try testing.expectEqual(resource, world.getResource(NameAndID).?);
+        try testing.expectEqual(resource, world.getResource(Movement).?);
 
-        resource = NameAndID.initRaw("test2", 42);
+        resource = Movement{ .running = 2 };
         try world.putResource(resource);
-        try testing.expectEqual(resource, world.getResource(NameAndID).?);
+        try testing.expectEqual(resource, world.getResource(Movement).?);
     }
 
     test "getResource" {
         var world = World.init(allocator);
         defer world.deinit();
 
-        const resource = NameAndID.initRaw("test", 69);
+        const resource = Movement{ .walking = 5 };
         try world.putResource(resource);
 
-        try testing.expectEqual(resource, world.getResource(NameAndID).?);
+        try testing.expectEqual(resource, world.getResource(Movement).?);
     }
 
     test "getResourcePtr" {
         var world = World.init(allocator);
         defer world.deinit();
 
-        const resource = NameAndID.initRaw("test", 69);
+        const resource = Movement{ .walking = 5 };
         try world.putResource(resource);
 
-        const resource_out = world.getResourcePtr(NameAndID).?;
+        const resource_out = world.getResourcePtr(Movement).?;
         try testing.expectEqual(resource, resource_out.*);
 
-        resource_out.id = ID.init(42);
-        try testing.expectEqual(NameAndID.initRaw("test", 42), world.getResourcePtr(NameAndID).?.*);
+        resource_out.* = Movement{ .running = 2 };
+        try testing.expectEqual(Movement{ .running = 2 }, world.getResourcePtr(Movement).?.*);
     }
 
     test "JSON serialization/deserialization" {
@@ -698,13 +740,13 @@ pub const Test = struct {
             NameAndID.initRaw("test1", 1),
             NameAndID.initRaw("test2", 2),
             NameAndID.initRaw("test3", 3),
-            FunkyNameAndID.init(Name.init("test4"), ID.init(4), Funky{ .in_a_good_way = 6 }),
-            FunkyNameAndID.init(Name.init("test5"), ID.init(5), Funky{ .in_a_bad_way = 4 }),
+            FunkyNameAndID.initRaw("test4", 4, .{ .in_a_good_way = 6 }),
+            FunkyNameAndID.initRaw("test5", 5, .{ .in_a_bad_way = 4 }),
         };
 
         const resources = .{
-            NameAndID.initRaw("test1", 1),
-            FunkyNameAndID.init(Name.init("test5"), ID.init(5), Funky{ .in_a_bad_way = 4 }),
+            Counter.init(),
+            Movement{ .running = 4 },
         };
 
         var ids: [entities.len]EntityID = undefined;

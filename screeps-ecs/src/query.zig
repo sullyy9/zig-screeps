@@ -300,7 +300,7 @@ pub const Test = struct {
     const ArrayList = std.ArrayList;
     const allocator = std.testing.allocator;
 
-    const components = @import("testing/components.zig");
+    const components = @import("testing/mod.zig");
     const ID = components.ID;
     const Name = components.Name;
     const Funky = components.Funky;
@@ -328,8 +328,8 @@ pub const Test = struct {
         _ = try world.addEntity(entities[0]);
         _ = try world.addEntity(entities[1]);
         _ = try world.addEntity(entities[2]);
-        _ = try world.addEntity(FunkyNameAndID.init(entities[3].name, entities[3].id, Funky{ .in_a_good_way = 6 }));
-        _ = try world.addEntity(FunkyNameAndID.init(entities[4].name, entities[4].id, Funky{ .in_a_bad_way = 4 }));
+        _ = try world.addEntity(FunkyNameAndID.fromNameAndID(entities[3], Funky{ .in_a_good_way = 6 }));
+        _ = try world.addEntity(FunkyNameAndID.fromNameAndID(entities[4], Funky{ .in_a_bad_way = 4 }));
 
         var query = Query(&.{ *const Name, *const ID }, void).init(&world);
 
@@ -359,8 +359,8 @@ pub const Test = struct {
         _ = try world.addEntity(entities[0]);
         _ = try world.addEntity(entities[1]);
         _ = try world.addEntity(entities[2]);
-        _ = try world.addEntity(FunkyNameAndID.init(entities[3].name, entities[3].id, Funky{ .in_a_good_way = 6 }));
-        _ = try world.addEntity(FunkyNameAndID.init(entities[4].name, entities[4].id, Funky{ .in_a_bad_way = 4 }));
+        _ = try world.addEntity(FunkyNameAndID.fromNameAndID(entities[3], Funky{ .in_a_good_way = 6 }));
+        _ = try world.addEntity(FunkyNameAndID.fromNameAndID(entities[4], Funky{ .in_a_bad_way = 4 }));
 
         var query = Query(&.{ *const Name, *ID }, void).init(&world);
         var iter = query.iterMut();

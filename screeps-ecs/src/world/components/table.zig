@@ -395,7 +395,7 @@ pub const Test = struct {
     const testing = std.testing;
     const allocator = std.testing.allocator;
 
-    const components = @import("../../testing/components.zig");
+    const components = @import("../../testing/mod.zig");
     const ID = components.ID;
     const Name = components.Name;
     const Funky = components.Funky;

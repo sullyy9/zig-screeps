@@ -64,10 +64,11 @@ pub const Test = struct {
     const ArrayList = std.ArrayList;
     const allocator = std.testing.allocator;
 
-    const components = @import("testing/components.zig");
+    const components = @import("testing/mod.zig");
     const ID = components.ID;
     const Name = components.Name;
     const Funky = components.Funky;
+    const Counter = components.Counter;
     const NameAndID = components.NameAndID;
     const FunkyNameAndID = components.FunkyNameAndID;
 
@@ -114,8 +115,8 @@ pub const Test = struct {
         _ = try ecs.world.addEntity(entities[0]);
         _ = try ecs.world.addEntity(entities[1]);
         _ = try ecs.world.addEntity(entities[2]);
-        _ = try ecs.world.addEntity(FunkyNameAndID.init(entities[3].name, entities[3].id, Funky{ .in_a_good_way = 6 }));
-        _ = try ecs.world.addEntity(FunkyNameAndID.init(entities[4].name, entities[4].id, Funky{ .in_a_bad_way = 4 }));
+        _ = try ecs.world.addEntity(FunkyNameAndID.fromNameAndID(entities[3], .{ .in_a_good_way = 6 }));
+        _ = try ecs.world.addEntity(FunkyNameAndID.fromNameAndID(entities[4], .{ .in_a_bad_way = 4 }));
 
         for (&entities) |*ent| ent.id.id += 10;
 
