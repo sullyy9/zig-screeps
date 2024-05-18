@@ -5,20 +5,22 @@ const ArrayListUnmanaged = std.ArrayListUnmanaged;
 
 const World = @import("world/mod.zig").World;
 
-const system_module = @import("system/mod.zig");
-const SystemParam = system_module.SystemParam;
-const SystemRegistry = system_module.Registry;
+const sys = @import("system/mod.zig");
+const SystemRegistry = sys.Registry;
+const Scheduler = sys.Scheduler;
 
 pub fn ECS(comptime systems: SystemRegistry) type {
     return struct {
         const Self = @This();
 
         world: World,
+        scheduler: Scheduler,
         comptime systems: SystemRegistry = systems,
 
         pub fn init(allocator: Allocator) Self {
             return Self{
                 .world = World.init(allocator),
+                .scheduler = Scheduler.init(),
                 .systems = systems,
             };
         }
@@ -37,40 +39,7 @@ pub fn ECS(comptime systems: SystemRegistry) type {
         }
 
         pub fn tick(self: *Self) void {
-            inline for (self.systems.systems[0..self.systems.count]) |system| {
-                const func: *const system.Type() = @ptrCast(system.ptr);
-
-                var args: system.args = undefined;
-                inline for (&args) |*arg| {
-                    arg.* = switch (SystemParam.init(@TypeOf(arg.*))) {
-                        .query => |Q| Q.init(&self.world),
-                        .world_ptr => &self.world,
-
-                        .resource_ptr => |Res| brk: {
-                            if (self.world.getResourcePtr(Res)) |resource| break :brk resource;
-
-                            std.debug.panic(
-                                "Resource '{s}' requested by system '{s}' is not available",
-                                .{ @typeName(Res), system.name() },
-                            );
-                        },
-
-                        .resource_ptr_const => |Res| brk: {
-                            if (self.world.getResourcePtrConst(Res)) |resource| break :brk resource;
-
-                            std.debug.panic(
-                                "Resource '{s}' requested by system '{s}' is not available",
-                                .{ @typeName(Res), system.name() },
-                            );
-                        },
-
-                        .opt_resource_ptr => |Res| self.world.getResourcePtr(Res),
-                        .opt_resource_ptr_const => |Res| self.world.getResourcePtrConst(Res),
-                    };
-                }
-
-                @call(.auto, func, args);
-            }
+            self.scheduler.run(&self.world, self.systems);
         }
     };
 }
