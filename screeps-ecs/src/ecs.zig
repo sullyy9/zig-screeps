@@ -3,15 +3,11 @@ const json = std.json;
 const Allocator = std.mem.Allocator;
 const ArrayListUnmanaged = std.ArrayListUnmanaged;
 
-const world = @import("world/world.zig");
-const World = world.World;
+const World = @import("world/mod.zig").World;
 
 const system_module = @import("system/mod.zig");
+const SystemParam = system_module.SystemParam;
 const SystemRegistry = system_module.Registry;
-const system_param = system_module.param;
-
-const query_module = @import("query.zig");
-const isQuery = query_module.isQuery;
 
 pub fn ECS(comptime systems: SystemRegistry) type {
     return struct {
@@ -46,11 +42,31 @@ pub fn ECS(comptime systems: SystemRegistry) type {
 
                 var args: system.args = undefined;
                 inline for (&args) |*arg| {
-                    if (comptime isQuery(@TypeOf(arg.*))) {
-                        arg.* = @TypeOf(arg.*).init(&self.world);
-                    } else if (comptime system_param.isWorldPointer(@TypeOf(arg.*))) {
-                        arg.* = &self.world;
-                    }
+                    arg.* = switch (SystemParam.init(@TypeOf(arg.*))) {
+                        .query => |Q| Q.init(&self.world),
+                        .world_ptr => &self.world,
+
+                        .resource_ptr => |Res| brk: {
+                            if (self.world.getResourcePtr(Res)) |resource| break :brk resource;
+
+                            std.debug.panic(
+                                "Resource '{s}' requested by system '{s}' is not available",
+                                .{ @typeName(Res), system.name() },
+                            );
+                        },
+
+                        .resource_ptr_const => |Res| brk: {
+                            if (self.world.getResourcePtrConst(Res)) |resource| break :brk resource;
+
+                            std.debug.panic(
+                                "Resource '{s}' requested by system '{s}' is not available",
+                                .{ @typeName(Res), system.name() },
+                            );
+                        },
+
+                        .opt_resource_ptr => |Res| self.world.getResourcePtr(Res),
+                        .opt_resource_ptr_const => |Res| self.world.getResourcePtrConst(Res),
+                    };
                 }
 
                 @call(.auto, func, args);
@@ -132,5 +148,71 @@ pub const Test = struct {
         std.sort.insertion(NameAndID, collected.items, {}, NameAndIDSortCtx.lessThan);
 
         try testing.expectEqualSlices(NameAndID, &entities, collected.items);
+    }
+
+    fn testAddNameAndID(world: *World) void {
+        _ = world.addEntity(NameAndID.initRaw("added-test", 1)) catch |err| {
+            std.debug.panic("Failed to add entity: {!}", .{err});
+        };
+    }
+
+    test "world access" {
+        comptime var systems = SystemRegistry.init();
+        comptime systems.addSystem(testAddNameAndID);
+
+        var ecs = ECS(systems).init(allocator);
+        defer ecs.deinit();
+
+        ecs.tick();
+
+        var iter = ecs.world.iterComponentsConst(&.{ Name, ID });
+        var collected = ArrayList(NameAndID).init(allocator);
+        defer collected.deinit();
+        while (iter.next()) |item| try collected.append(NameAndID.init(item[0].*, item[1].*));
+
+        try testing.expectEqualSlices(NameAndID, &.{NameAndID.initRaw("added-test", 1)}, collected.items);
+    }
+
+    fn counterResInc(count: *Counter, count_const: *const Counter) void {
+        _ = count_const;
+        count.increment();
+    }
+
+    test "resource access" {
+        comptime var systems = SystemRegistry.init();
+        comptime systems.addSystem(counterResInc);
+
+        var ecs = ECS(systems).init(allocator);
+        defer ecs.deinit();
+
+        try ecs.world.putResource(Counter.init());
+
+        ecs.tick();
+
+        try testing.expectEqual(1, ecs.world.getResource(Counter).?.count);
+    }
+
+    fn counterResInsertOrInc(world: *World, count: ?*Counter, count_const: ?*const Counter) void {
+        _ = count_const;
+        if (count) |c| {
+            c.increment();
+        } else {
+            world.putResource(Counter.init()) catch |err| {
+                std.debug.panic("Failed to add resource: {!}", .{err});
+            };
+        }
+    }
+
+    test "optional resource access" {
+        comptime var systems = SystemRegistry.init();
+        comptime systems.addSystem(counterResInsertOrInc);
+
+        var ecs = ECS(systems).init(allocator);
+        defer ecs.deinit();
+
+        ecs.tick();
+        try testing.expectEqual(0, ecs.world.getResource(Counter).?.count);
+        ecs.tick();
+        try testing.expectEqual(1, ecs.world.getResource(Counter).?.count);
     }
 };

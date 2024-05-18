@@ -79,4 +79,8 @@ pub const SystemWrapper = struct {
         const func: *const fn () void = @ptrCast(self.ptr);
         func(1);
     }
+
+    pub fn name(self: *const Self) []const u8 {
+        return @typeName(self.Type());
+    }
 };
